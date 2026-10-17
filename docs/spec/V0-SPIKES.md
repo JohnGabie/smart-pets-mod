@@ -67,12 +67,18 @@ PASS: round trip works; invalid packets rejected; same path will serve V3.
 Question: dig only loose blocks, honor mobGriefing/protection, stuck detection, head toward owner's scent/sound.
 PASS: cave-in scenario in GameTest; never touches structures; config off works.
 
+## S10 — Behavior-spec framework
+Question: can plain-text scenarios run against both a fast core simulation and the real game, with matrix coverage and property tests finding unforeseen cases? (design: `BEHAVIOR-SPECS.md`)
+Deliver: Cucumber-JVM (JUnit Platform) + jqwik wired into `core`; `PetWorld` driver interface with a core driver; journal-based assertions; matrix expander/reporter for `specs/matrix/*`; `UNSPECIFIED_SITUATION` capture; one `@platform` scenario passing in GameTest through the server-side command handler.
+PASS: the sample features run green or red for the right reason; the matrix report lists unspecified cells; a property suite finds a seeded deliberate bug; the same `@platform` scenario passes in core and in the game.
+Fallback: minimal in-house runner for `.feature` text; GameTest-only for platform scenarios.
+
 ## S11 — Time source
 Question: which world clock gives the monotonic day counter; behavior with sleeping, `/time set`, daylight cycle off.
 PASS: documented behavior + tests; `age_days` monotonic function adopted.
 
 ## Suggested order and parallelism
-S0 → then in parallel: S11, S4, S1(offline part) [pure/core, cheap models ok] · S3, S2 [rendering] · S6, S7, S8 [platform]. S5 after S4. S9 after S6. S1 in-game part after S0+S8.
+S0 → then in parallel: S10, S11, S4, S1(offline part) [pure/core, cheap models ok] · S3, S2 [rendering] · S6, S7, S8 [platform]. S5 after S4. S9 after S6. S1 in-game part after S0+S8.
 Model tiers (see `agents/modelos.md`): S0, S3, S5, S7 hard parts → STRONG; S4, S6, S8, S9 → MEDIUM; fixtures, lang files, boilerplate → FAST.
 
 ## Human-needed during V0

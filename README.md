@@ -36,6 +36,8 @@ Fase atual: só ideação, sem código.
 - `docs/spec/SPEC.md` spec consolidada (rascunho, em inglês)
 - `docs/spec/GAP-REVIEW.md` revisão: contradições, lacunas e decisões pendentes
 - `docs/spec/V0-SPIKES.md` V0: ferramentas e spikes de risco
+- `docs/spec/BEHAVIOR-SPECS.md` specs de comportamento executáveis (framework de testes em texto)
+- `specs/` cenários Gherkin, vocabulário, tabela de decisão e fila de comportamentos não especificados
 - `docs/adr/` decisões de arquitetura (uma por spike)
 - `MODLOG.md` diário de evidências · `ASSETS.md` origem de assets
 

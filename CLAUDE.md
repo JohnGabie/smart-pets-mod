@@ -31,6 +31,7 @@ Rejeição volta ao executor. Limite: 3 ciclos por tarefa; depois escalar ao Arq
 - Ler o projeto e seguir suas convenções antes de editar.
 - Compilar após cada mudança. Erro de compilação nunca é "detalhe".
 - Verificar APIs em fonte real (código-fonte mapeado da versão, docs oficiais Fabric/NeoForge, ferramentas de consulta). Nunca confiar na memória do modelo para nomes de classes, mappings ou registros.
+- Comportamento esperado vive em specs de texto executáveis (`specs/`, ver `docs/spec/BEHAVIOR-SPECS.md`): cenários Gherkin, tabelas de decisão e propriedades. Escrever a spec antes; executor nunca a enfraquece; o que não foi previsto vira linha em `specs/UNSPECIFIED.md`.
 - Escrever os testes antes da implementação. Lógica pura (genes, herança, maestria, energia, idade, vínculo) é testada SEM abrir o Minecraft.
 - Uma funcionalidade pequena por vez. A menor fatia que prove a ideia.
 - Escrever contrato onde estado cruza fronteiras (cliente/servidor, voz->comando, salvamento): dono, unidades, ciclo de vida, formato.

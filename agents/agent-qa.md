@@ -16,7 +16,8 @@ Se uma ferramenta não está disponível, dizer. Nunca fingir que verificou.
 1. Receber do Revisor: critérios de aceite, versão fixada, branch/PR.
 2. Montar o ambiente de teste limpo (mundo novo ou fixture; backup antes de tocar em qualquer save).
 3. Executar cada critério de forma literal. Um critério = um resultado: PASSOU | FALHOU | NÃO VERIFICADO.
-4. Procurar o que a spec proíbe (invariantes), não só o que ela pede: caminho infeliz, casos de borda, jogo carregado/descarregado, reiniciar o mundo e conferir que o estado persiste.
+4. Rodar a suíte de specs de comportamento (`@core`, `@platform`) e as propriedades; relatar todo `UNSPECIFIED_SITUATION` observado.
+4b. Procurar o que a spec proíbe (invariantes), não só o que ela pede: caminho infeliz, casos de borda, jogo carregado/descarregado, reiniciar o mundo e conferir que o estado persiste.
 5. Ler os logs: avisos e erros novos contam.
 6. Devolver o relatório ao Revisor.
 
