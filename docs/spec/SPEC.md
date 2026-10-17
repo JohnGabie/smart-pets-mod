@@ -165,7 +165,7 @@ Bond per person; owner / co-guardian / acquaintance / stranger; cue words per pe
 - Compatibility: other mods that replace wolves are incompatible by design; document.
 - i18n: pt-BR and en from day one. Accessibility: subtitles; every voice feature has a non-voice path.
 - Privacy/security: mic opt-in, local processing, no network; debug tools only in dev instances.
-- Licensing: own assets or permissively licensed with a provenance ledger (`ASSETS.md`); AI-use disclosure per platform rules (`docs/26`); mod license [O].
+- Licensing: own assets or permissively licensed with a provenance ledger (`ASSETS.md`); AI-use disclosure per platform rules (`docs/26`); code license decided: GPL-3.0-or-later (derivatives must stay free); original assets proposed CC BY-SA 4.0 [P].
 - Debug/QA: dev-only commands (spawn with genome, set age/needs, dump record, time warp, force events) and an event journal.
 
 ## 23. Invariants
@@ -173,7 +173,7 @@ See `CLAUDE.md` §6. Any change needs the human.
 
 ## 24. Open decisions (priority order, with recommendation)
 1. Target Minecraft version / loader / JDK / GeckoLib support — recommend latest stable 26.x + Fabric if tooling supports it (V0-S0).
-2. Mod id and public name; mod license; public release or personal.
+2. Mod id and public name; public release timing (license is decided: GPL-3.0-or-later).
 3. Entity strategy (custom entity) — confirm via S3/S6.
 4. Art style (blocky-improved vs realistic) and sound style (listening tests).
 5. Year length (10 days), stage boundaries, sleep gating radius/percent, rescue windows by difficulty.
