@@ -1,0 +1,31 @@
+# Build / Gradle
+build/
+.gradle/
+run/
+out/
+bin/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Secrets / local config
+.env
+.env.*
+local.properties
+
+# Logs / crashes
+*.log
+logs/
+crash-reports/
+hs_err_pid*
+
+# Misc
+node_modules/
+.DS_Store
+Thumbs.db
+*.bak
