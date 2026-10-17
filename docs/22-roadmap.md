@@ -2,6 +2,7 @@
 
 | Versão | Escopo |
 |---|---|
+| v0 | Ferramentas e spikes de risco (voz, texturas procedurais, entidade/modelo, persistência, viagem fora da simulação, IA, sono, rede, escavar). Ver `docs/spec/V0-SPIKES.md`. |
 | v1 | Cão, singleplayer. Camadas 0 a 5 em ordem: juízo, indivíduo, saúde, habilidades, selvagem -> doméstico, alcateia. Começar pelo mínimo do primeiro dia. |
 | v1.5 | Voz por exemplo (depois do teste isolado), habilitada por padrão se validada. Comandos por UI sempre. |
 | v2 | Gato (primeira leva, ver 21). |

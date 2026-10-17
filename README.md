@@ -32,6 +32,13 @@ Fase atual: só ideação, sem código.
 - `docs/25-models-animations-research.md` modelos, texturas e animações existentes
 - `docs/26-ai-modding-practices-2026.md` como modders usam Claude (2026), mashups, boas práticas, regras de publicação
 
+## Especificação consolidada (fonte da verdade)
+- `docs/spec/SPEC.md` spec consolidada (rascunho, em inglês)
+- `docs/spec/GAP-REVIEW.md` revisão: contradições, lacunas e decisões pendentes
+- `docs/spec/V0-SPIKES.md` V0: ferramentas e spikes de risco
+- `docs/adr/` decisões de arquitetura (uma por spike)
+- `MODLOG.md` diário de evidências · `ASSETS.md` origem de assets
+
 ## Agentes e regras de trabalho
 - `CLAUDE.md` regras do projeto (cola de tudo): fazer, não fazer, invariantes, fluxo, git
 - `agents/agent-arquitetor.md`, `agents/agent-executor.md`, `agents/agent-revisor.md`, `agents/agent-qa.md` papéis
