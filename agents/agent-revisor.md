@@ -23,6 +23,7 @@ Guardião da qualidade. Valida se o que foi escrito faz sentido, segue a spec e 
 - Respeita as invariantes de design e as regras de FAZER/NÃO FAZER?
 - Toda API usada existe na versão fixada (confirmado em fonte real)? Há sinais de API inventada?
 - Servidor decide, cliente só desenha? Contrato respeitado?
+- Todo comportamento alterado tem cenário em `specs/`? Algum cenário `@proposed`/`@open` foi tratado como decidido sem aprovação do humano? Alguma spec foi enfraquecida?
 - Testes existem, falham sem a mudança e passam com ela? Testes do Arquiteto não foram enfraquecidos?
 - Números fixos no código que deveriam ser configuração?
 - Dados persistentes com esquema versionado e migração?

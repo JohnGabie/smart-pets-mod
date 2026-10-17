@@ -5,13 +5,14 @@ Mod de Minecraft Java que dá a cães (v1) e gatos (v2) juízo, personalidade, g
 Este arquivo é a cola do projeto. Vale para qualquer agente e qualquer modelo. Os papéis estão em `agents/`. Nomes de modelos só existem em `agents/modelos.md`.
 
 ## 1. Estado e portão (leia primeiro)
-- Fase atual: ideação e especificação. NÃO existe código de produto.
-- Portão: nenhum código de produto antes de (a) spec aprovada pelo humano e (b) plano aprovado pelo humano. Antes disso só se escreve documentação.
+- Fase atual: especificação consolidada em rascunho (`docs/spec/SPEC.md`). NÃO existe código de produto.
+- Portão: nenhum código de produto antes de (a) spec aprovada pelo humano e (b) plano aprovado pelo humano. Antes disso só documentação.
+- Exceção controlada: os spikes da V0 (`docs/spec/V0-SPIKES.md`) provam ferramentas e riscos; o código deles é descartável salvo se o ADR disser que "gradua". Cada spike termina em um ADR em `docs/adr/`.
 - Pendências que bloqueiam o scaffold: versão-alvo do Minecraft (provável 26.x, sem ofuscação), loader (provável Fabric), JDK exigido pela versão, launcher de desenvolvimento. Não assumir: perguntar.
 - Comandos de build e teste: A DEFINIR no scaffold. Registrar aqui quando existirem. Não inventar comandos.
 
 ## 2. Fonte da verdade (nesta ordem)
-1. Specs aprovadas (`docs/spec/`, a criar).
+1. Specs aprovadas (`docs/spec/SPEC.md`; lacunas e decisões pendentes em `docs/spec/GAP-REVIEW.md`).
 2. Documentos de decisão em `docs/` (numerados).
 3. Este arquivo.
 Conversas e memória do modelo NÃO são fonte. Se duas fontes conflitam, ou a spec está vaga: parar e perguntar. Não decidir sozinho.
@@ -30,6 +31,7 @@ Rejeição volta ao executor. Limite: 3 ciclos por tarefa; depois escalar ao Arq
 - Ler o projeto e seguir suas convenções antes de editar.
 - Compilar após cada mudança. Erro de compilação nunca é "detalhe".
 - Verificar APIs em fonte real (código-fonte mapeado da versão, docs oficiais Fabric/NeoForge, ferramentas de consulta). Nunca confiar na memória do modelo para nomes de classes, mappings ou registros.
+- Comportamento esperado vive em specs de texto executáveis (`specs/`, ver `docs/spec/BEHAVIOR-SPECS.md`): cenários Gherkin, tabelas de decisão e propriedades. Escrever a spec antes; executor nunca a enfraquece; o que não foi previsto vira linha em `specs/UNSPECIFIED.md`.
 - Escrever os testes antes da implementação. Lógica pura (genes, herança, maestria, energia, idade, vínculo) é testada SEM abrir o Minecraft.
 - Uma funcionalidade pequena por vez. A menor fatia que prove a ideia.
 - Escrever contrato onde estado cruza fronteiras (cliente/servidor, voz->comando, salvamento): dono, unidades, ciclo de vida, formato.
@@ -87,4 +89,5 @@ Estilo visual e sonoro, números de balanceamento, mudança de escopo, publicaç
 O projeto usa IA. Plataformas exigem divulgação e contribuição humana significativa (design, direção, testes de jogo, ajuste). Manter o diário de decisões. Ver `docs/26`.
 
 ## 12. Idioma
-Documentação em português. Código, identificadores, mensagens de commit e logs em inglês. Textos do jogo em arquivos de idioma (pt-BR e en).
+Specs, ADRs, código, identificadores, commits e logs em inglês (para os agentes). `docs/01`–`docs/26` ficam em português como histórico de design. Textos do jogo em arquivos de idioma (pt-BR e en).
+Arquivos de apoio: `MODLOG.md` (diário de evidências) e `ASSETS.md` (origem e licença de todo asset).

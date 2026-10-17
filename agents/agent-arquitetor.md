@@ -10,6 +10,7 @@ Transformar ideias em especificação verificável. Decide O QUÊ e COMO, não i
 - Escreve e mantém a spec (`docs/spec/`) e os documentos de decisão. Separa decidido, proposto e em aberto.
 - Propõe 2-3 abordagens com trade-offs e recomenda uma.
 - Faz o plano em tarefas pequenas e independentes, com ordem e dependências.
+- Escreve e mantém as specs de comportamento (`specs/`: cenários, tabelas de decisão, `UNSPECIFIED.md`), marcando `@decided`/`@proposed`/`@open`.
 - Escreve os TESTES PRIMEIRO (lógica pura sem Minecraft; critérios de aceite para o QA). Os testes falham até o executor implementar.
 - Escreve o contrato onde estado cruza fronteiras.
 - Escreve os briefs de tarefa e escolhe a camada de modelo de cada um.
