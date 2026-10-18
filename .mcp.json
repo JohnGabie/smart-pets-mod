@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "mcdev-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcdev-mcp@2.2.1",
+        "serve"
+      ],
+      "env": {}
+    },
+    "mcmodding": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcmodding-mcp@0.5.0"
+      ],
+      "env": {}
+    }
+  }
+}
