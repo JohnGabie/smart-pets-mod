@@ -13,7 +13,7 @@ S0 must pin the Minecraft version, loader, Java and build tool versions before a
 ### Target: Minecraft 26.2, not 26.3
 As of 2026-10-17 (Modrinth API), DebugBridge 2.1.0, the in-game observation bridge chosen for S0, has builds for 26.2 and 26.1.x and **no build for 26.3**. Fabric API and GeckoLib exist for both (GeckoLib 5.5.5 for 26.2, 5.5.7 for 26.3). Live in-game observation by agents is a core S0 requirement, so 26.2 wins.
 
-### Pinned versions (all built and run locally)
+### Pinned versions (built/run locally except where noted)
 | Component | Pin | Where |
 |---|---|---|
 | Minecraft | 26.2 | `gradle.properties` `minecraft_version` |
@@ -24,8 +24,9 @@ As of 2026-10-17 (Modrinth API), DebugBridge 2.1.0, the in-game observation brid
 | Java | Temurin JDK 25.0.4.1+1; `options.release = 25` | `scripts/dev/install-jdk25.sh` (sha256-checked), both `build.gradle` files |
 | JUnit | 6.1.3 (BOM) | `core/build.gradle` |
 | fabric-client-gametest-api-v1 | 6.0.2+0f4f1dca9e (inside Fabric API 0.161.0+26.2) | transitive |
-| DebugBridge (dev only) | 2.1.0 for 26.2, Modrinth version `NO17UtXL` | `scripts/dev/fetch-debugbridge.sh` (sha512-checked, into git-ignored `mod/run/mods/`) |
-| mcdev-mcp / mcmodding-mcp (dev only) | 2.2.1 / 0.5.0 | `.mcp.json` |
+| DebugBridge (dev only) | 2.1.0 for 26.2, Modrinth version `NO17UtXL` | `scripts/dev/fetch-debugbridge.sh` (sha512-checked, into git-ignored `mod/run/mods/`); jar loads in `runClient`, bridge not yet connected (ADR-0002) |
+| mcdev-mcp (dev only) | 2.2.1 | `.mcp.json`; vetted and pinned; run only as the CLI `init`, never yet as an MCP server (pending approval) |
+| mcmodding-mcp (dev only) | 0.5.0 | `.mcp.json`; vetted and pinned; never run (pending approval) |
 
 GeckoLib is not a dependency yet (out of scope for S0; S3 decides).
 

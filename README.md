@@ -39,7 +39,7 @@ Everything below is a design goal from [`docs/spec/SPEC.md`](docs/spec/SPEC.md),
 - **Data-driven.** Tuning numbers, trait ranges, skill trees and danger tables live in config/data, not in code.
 - **Executable behavior specs.** Expected behavior is written as plain-text scenarios and decision tables in [`specs/`](specs/), used as acceptance criteria and as the test suite. Situations nobody anticipated are tracked in [`specs/UNSPECIFIED.md`](specs/UNSPECIFIED.md).
 
-The target Minecraft version (likely 26.x), loader and Java version are not pinned yet; that happens in the toolchain phase of V0.
+Target: Minecraft 26.2 / Fabric / Java 25, proposed in [ADR-0001](docs/adr/0001-stack-pin.md) (awaiting the maintainer's approval).
 
 ## Roadmap
 

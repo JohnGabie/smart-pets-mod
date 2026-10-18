@@ -21,7 +21,7 @@ The observation stack is, in order of trust:
 |---|---|---|
 | `./gradlew build`, `./gradlew :core:test` | Works | 5 core tests pass (2 boundary + 3 journal) |
 | Headless client GameTest + screenshot oracle | Works | `OK range=16..235`, exit 0; a deliberately failing test makes the runner exit 1 |
-| Dev command + journal in game | Works | log has `SMARTPETS_DEBUG_PONG`; without `-Dsmartpets.dev=true` the command does not exist |
+| Dev command in game | Works | only the `SMARTPETS_DEBUG_PONG` log line was observed; without `-Dsmartpets.dev=true` the command does not exist. The journal entry the command writes is not read back by any in-game test (journal is covered by 3 core unit tests only) |
 | `mcdev-mcp init -v 26.2` (CLI) | Works with workarounds | 6513 classes / 537 packages, 402673 call refs |
 | mcdev-mcp / mcmodding-mcp as MCP servers in Claude Code | PENDING HUMAN | `claude mcp list`: "Pending approval"; Claude Code must be restarted in the repo and the servers approved |
 | DebugBridge port + `mc_*` tools | PENDING HUMAN | mod loads, but no port 9876-9886 opens until a human accepts its first-run consent screen |
@@ -39,7 +39,7 @@ The observation stack is, in order of trust:
 - Never run two game instances at once (7 GB RAM machine).
 
 ## Client GameTest API (verified, fabric-client-gametest-api-v1 6.0.2+0f4f1dca9e)
-Checked with javap and by compiling and running: `ClientGameTestContext#takeScreenshot(String)`, `#getInput() : TestInput` (key/mouse, `lookAt(yaw,pitch)`, `typeChars`), `#worldBuilder().create() : TestSingleplayerContext` (AutoCloseable), `getConnection().waitForChunksRender()`, `getServer().runCommand(String)` (exercised by the ping test), `waitTicks`. Full list in `MODLOG.md`. Loom `fabricApi { configureTests { ... } }` creates the `gametest` source set and the run `clientGameTest`; configure that run with `loom { runs { configureEach { if (name == "clientGameTest") ... } } }` (declaring `runs { clientGameTest { } }` fails: name already exists).
+Checked with javap and by compiling and running: `ClientGameTestContext#takeScreenshot(String)`, `#getInput() : TestInput`, `#worldBuilder().create() : TestSingleplayerContext` (AutoCloseable), `getConnection().waitForChunksRender()`, `getServer().runCommand(String)` (exercised by the ping test), `waitTicks`. The `TestInput` methods (key/mouse, `lookAt(yaw,pitch)`, `typeChars`) were read in the Fabric API 26.2 sources during planning, not confirmed with javap; no scripted input has been exercised yet. Full list in `MODLOG.md`. Loom `fabricApi { configureTests { ... } }` creates the `gametest` source set and the run `clientGameTest`; configure that run with `loom { runs { configureEach { if (name == "clientGameTest") ... } } }` (declaring `runs { clientGameTest { } }` fails: name already exists).
 
 ## mcdev-mcp init recipe (26.2)
 ```
@@ -73,5 +73,5 @@ At first run DebugBridge shows a developer-mode consent screen ("I Understand - 
 - The runner greps `latest.log` without clearing the logs directory first.
 - `enableGameTests = false` until a server GameTest exists (see ADR-0001).
 - `EventJournal`: no null contract (null `type` or `data` is not rejected explicitly) and `Entry.data` is a mutable map exposed through `snapshot()`; ping entry tick is a placeholder 0. Fix before S10 relies on it.
-- `fetch-debugbridge.sh` downloads straight into `mod/run/mods/`, so a failed sha512 check leaves the bad jar there (delete it by hand); it also has no filename/version assertion and takes `files[0]`. (`install-to-prism.sh` already downloads to a temp file and moves only after the check.)
+- `fetch-debugbridge.sh` (fixed at S0 close): downloads to a temp file, asserts the filename is `debugbridge-26.2-2.1.0.jar`, and moves it into `mod/run/mods/` only after sha512 passes. Still takes `files[0]` of the Modrinth version.
 - `install-to-prism.sh`: relative `PRISM_MODS_DIR` is resolved after `cd` to the repo root; old Fabric API jars are not removed on a version bump.

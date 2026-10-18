@@ -19,7 +19,7 @@
       "items": [
         { "name": "Consolidated design spec and gap review", "state": "done" },
         { "name": "Executable behavior specs (67 scenarios, decision table)", "state": "done" },
-        { "name": "Toolchain, headless tests and in-game observation (S0): build, unit tests and headless in-game test verified; live debug bridge and launcher instance pending maintainer checks", "state": "progress" },
+        { "name": "Toolchain, headless tests and in-game observation (S0): build, unit tests and headless in-game test verified; live debug bridge and launcher instance pending maintainer checks; ADRs 0001-0002 proposed", "state": "progress" },
         { "name": "Voice cue recognition spike", "state": "planned" },
         { "name": "Procedural coat textures spike", "state": "planned" },
         { "name": "Custom entity, model and animation spike", "state": "planned" },

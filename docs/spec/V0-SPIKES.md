@@ -30,7 +30,7 @@ Verified (run and observed):
 - Dev-only command `/smartpets debug ping` (only with `-Dsmartpets.dev=true`) and the `core` `EventJournal`; the ping is checked by the runner.
 - `mcdev-mcp init -v 26.2` indexes the decompiled 26.2 source (needs JDK 25 first on `PATH` and `JAVA_TOOL_OPTIONS=-Xmx3g`).
 - Dev client `./gradlew :mod:runClient` boots to the title screen with DebugBridge 2.1.0 loaded.
-- Per-task reviewer loop ran on every S0 task (branches stacked, one per task).
+- Per-task reviewer loop ran on S0 Tasks 1–6 (branches stacked, one per task). Task 8 (this docs close) had no task review; the Task 7 PR loop was not run.
 
 PENDING HUMAN VERIFICATION:
 (a) DebugBridge port/log line and the `mc_*` MCP tools. Blocked by DebugBridge's first-run consent screen (a human click) and by Claude Code needing a restart to approve the project MCP servers.
@@ -51,7 +51,7 @@ Also open: the PR flow (labels, reviewer verdict on the PR, human merge in stack
 Follow-ups:
 - Blockbench MCP and short video capture (`mc_record_video`) move to S3.
 - Fabric 26.3: stay on 26.2 until a trigger in ADR-0001 fires.
-- Deferred minors (details in ADR-0002): runner checks only the first PNG; oracle checks only the luma range (weak for dark scenes); `enableGameTests = false` until a server GameTest exists; `EventJournal` null/mutability contract; `fetch-debugbridge.sh` leaves a bad jar in place if the sha512 check fails.
+- Deferred minors (details in ADR-0002): runner checks only the first PNG; oracle checks only the luma range (weak for dark scenes); `enableGameTests = false` until a server GameTest exists; `EventJournal` null/mutability contract. (`fetch-debugbridge.sh` leaving a bad jar on sha512 failure was fixed at S0 close.)
 
 ## S1 — Voice cue recognition (highest risk)
 Question: can learned arbitrary sounds/words be recognized reliably, in any language, locally, inside the game?
