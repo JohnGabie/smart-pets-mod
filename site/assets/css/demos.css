@@ -140,3 +140,10 @@
   .spd-pop, .spd-ebar--hot { animation: none !important; }
   .spd-meter > span, .spd-ebar-fill, .spd-ebar-over, .spd-marker { transition: none !important; }
 }
+
+/* Contrast fix: dim text inside LIGHT sub-panels of a demo must be dark (AA). Scoped to panels inside .spd-root. */
+.spd-root .mc-panel:not(.mc-panel--dark) .spd-readout,
+.spd-root .mc-panel:not(.mc-panel--dark) .spd-meter-label,
+.spd-root .mc-panel:not(.mc-panel--dark) .spd-foot,
+.spd-root .mc-panel:not(.mc-panel--dark) .spd-blurb,
+.spd-root .mc-panel:not(.mc-panel--dark) .spd-pup-look { color: #2a2a2a; }

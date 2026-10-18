@@ -8,7 +8,7 @@
 .mc-panel:not(.mc-panel--dark) :focus-visible { outline-color: #000; }
 .mc-panel:not(.mc-panel--dark) a { color: #14500a; }
 .mc-panel:not(.mc-panel--dark) a:hover { color: #000; }
-.mc-panel:not(.mc-panel--dark) .mc-note { background: #00000014; color: #222; }
+.mc-panel:not(.mc-panel--dark) .mc-note:not(.spd-note) { background: #00000014; color: #222; }
 
 /* ---------- Hero ---------- */
 .hero { padding: 40px 0 48px; }
@@ -92,10 +92,9 @@
 .feat p { margin: 0; }
 
 /* ---------- Demos ---------- */
-.demo-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+.demo-grid { display: grid; gap: 28px; grid-template-columns: 1fr; } /* one demo per row: the demos need width */
 .demo-panel { min-width: 0; }
-.demo-tag { display: inline-block; font-family: var(--font-pixel); font-size: 9px; line-height: 1.5; margin: 0 0 10px;
-  background: #1b1b1b; color: var(--mc-gold); border: 2px solid #000; padding: 5px 8px; }
+.demo-tag { display: none; } /* each demo carries its own 'concept demo' label */
 .demo-text { margin: 0 0 14px; }
 .demo-mount { min-width: 0; }
 .demo-failed { margin: 0; }
