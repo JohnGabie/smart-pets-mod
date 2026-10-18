@@ -13,7 +13,7 @@ Why: we want to write down, in plain text, what the dog does in every situation 
 Scenarios talk to an abstract `PetWorld` driver. Two implementations:
 - **Core driver** (fast, pure Java, fake clock, injected RNG). Runs everything tagged `@core`.
 - **Platform driver** (real game via GameTest). Runs the `@platform` subset to prove the adapter matches the core.
-Assertions read the **event journal** (the same journal QA uses), never internals. Commands are injected through the same server-side command handler the client uses (S8), (the preferred route). The client GameTest API does support scripted input (`TestInput`: key/mouse, `lookAt`, `typeChars`) and server commands (`TestServerContext#runCommand`), verified in the Fabric API sources for 26.2; use those for end-to-end checks.
+Assertions read the **event journal** (the same journal QA uses), never internals. Commands are injected through the same server-side command handler the client uses (S8), (the preferred route). Verified in S0 (fabric-client-gametest-api-v1 6.0.2, inside Fabric API 0.161.0+26.2, checked with javap; see `MODLOG.md` and ADR-0002): the client GameTest API exposes scripted input (`ClientGameTestContext#getInput()` returns `TestInput`: key/mouse, `lookAt(yaw,pitch)`, `typeChars`) and server commands (`TestServerContext#runCommand(String)`, exercised by the S0 dev-command test). Use them for end-to-end checks of the client path; the server-side command handler stays the preferred route for scenario commands.
 
 ## Tags
 `@decided` failing = bug · `@proposed` needs human OK before it is a requirement · `@open` safe default documented · `@core` `@platform` `@voice` `@slow` `@v2` `@v3`.
