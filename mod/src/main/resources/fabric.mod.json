@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "smartpets",
+	"version": "${version}",
+	"name": "Smart Pets",
+	"description": "Smarter, more useful pets (working title).",
+	"authors": ["Smart Pets contributors"],
+	"license": "GPL-3.0-or-later",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["dev.smartpets.SmartPetsMod"],
+		"client": ["dev.smartpets.client.SmartPetsClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
