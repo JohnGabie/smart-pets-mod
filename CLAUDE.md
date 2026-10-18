@@ -9,7 +9,7 @@ Este arquivo é a cola do projeto. Vale para qualquer agente e qualquer modelo. 
 - Portão: nenhum código de produto antes de (a) spec aprovada pelo humano e (b) plano aprovado pelo humano. Antes disso só documentação.
 - Exceção controlada: os spikes da V0 (`docs/spec/V0-SPIKES.md`) provam ferramentas e riscos; o código deles é descartável salvo se o ADR disser que "gradua". Cada spike termina em um ADR em `docs/adr/`.
 - Pendências que bloqueiam o scaffold: versão-alvo do Minecraft (provável 26.x, sem ofuscação), loader (provável Fabric), JDK exigido pela versão, launcher de desenvolvimento. Não assumir: perguntar.
-- Comandos de build e teste: `./gradlew build`, `./gradlew :core:test`, `bash scripts/qa/leak-check.sh`.
+- Comandos de build e teste: `./gradlew build`, `./gradlew :core:test`, `bash scripts/qa/leak-check.sh`; teste no jogo headless (cliente GameTest + oráculo de screenshot): `bash scripts/qa/run-client-gametest.sh` (roda `env -u WAYLAND_DISPLAY xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :mod:runClientGameTest` e depois `scripts/qa/check-screenshot.sh`; sem variável extra, Mesa llvmpipe; ~2 min; nunca duas instâncias do jogo ao mesmo tempo).
 
 ## 2. Fonte da verdade (nesta ordem)
 1. Specs aprovadas (`docs/spec/SPEC.md`; lacunas e decisões pendentes em `docs/spec/GAP-REVIEW.md`).

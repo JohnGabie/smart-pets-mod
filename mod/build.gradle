@@ -36,3 +36,14 @@ java {
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
 }
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "smartpets-test"
+		// Server GameTests off until one exists: when on, Loom hooks runGameTest into check/build.
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}
