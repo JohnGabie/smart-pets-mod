@@ -13,6 +13,15 @@ loom {
 			sourceSet sourceSets.client
 		}
 	}
+	runs {
+		// The 'clientGameTest' run is created by fabricApi.configureTests; configure it when it appears.
+		// Dev-only commands (DevMode) are registered only when this property is set.
+		configureEach {
+			if (name == "clientGameTest") {
+				property "smartpets.dev", "true"
+			}
+		}
+	}
 }
 
 dependencies {
