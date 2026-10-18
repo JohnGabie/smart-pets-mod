@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Local safety net (GitHub branch protection is unavailable on this plan).
+# Blocks: direct pushes to main, non-fast-forward (force) pushes to shared branches, deleting main.
+# Enable once per clone: git config core.hooksPath scripts/dev/git-hooks
+# Override (rare, human-approved): SMARTPETS_ALLOW_MAIN_PUSH=1 git push ...
+set -euo pipefail
+zero="0000000000000000000000000000000000000000"
+while read -r local_ref local_sha remote_ref remote_sha; do
+  branch="${remote_ref#refs/heads/}"
+  if [ "$local_sha" = "$zero" ]; then
+    if [ "$branch" = "main" ]; then echo "pre-push: refusing to delete main" >&2; exit 1; fi
+    continue
+  fi
+  if [ "$branch" = "main" ] && [ "${SMARTPETS_ALLOW_MAIN_PUSH:-0}" != "1" ]; then
+    echo "pre-push: direct push to main is blocked. Open a PR (human merges)." >&2; exit 1
+  fi
+  if [ "$remote_sha" != "$zero" ] && ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+    echo "pre-push: non-fast-forward push to '$branch' blocked (no force pushes on shared history)." >&2; exit 1
+  fi
+done
+exit 0

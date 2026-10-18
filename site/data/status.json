@@ -1,0 +1,51 @@
+{
+  "updated": "2026-10-17",
+  "project": {
+    "name": "Smart Pets",
+    "tagline": "Dogs (and later cats) with judgment, personality, genetics and a bond that grows.",
+    "stage": "Pre-alpha — design and toolchain. No playable build yet.",
+    "targetVersion": "Minecraft Java 26.x (Fabric)",
+    "license": "GPL-3.0-or-later"
+  },
+  "links": {
+    "repo": "https://github.com/JohnGabie/smart-pets-mod",
+    "spec": "https://github.com/JohnGabie/smart-pets-mod/blob/main/docs/spec/SPEC.md",
+    "issues": "https://github.com/JohnGabie/smart-pets-mod/issues"
+  },
+  "phases": [
+    {
+      "id": "v0", "name": "V0 — Foundations", "state": "progress", "progress": 35,
+      "summary": "Prove the toolchain and the hardest unknowns before building features.",
+      "items": [
+        { "name": "Consolidated design spec and gap review", "state": "done" },
+        { "name": "Executable behavior specs (67 scenarios, decision table)", "state": "done" },
+        { "name": "Toolchain, headless tests and in-game observation (S0)", "state": "planned" },
+        { "name": "Voice cue recognition spike", "state": "planned" },
+        { "name": "Procedural coat textures spike", "state": "planned" },
+        { "name": "Custom entity, model and animation spike", "state": "planned" },
+        { "name": "Persistence, catch-up and 'go home' travel spikes", "state": "planned" }
+      ]
+    },
+    {
+      "id": "v1", "name": "V1 — The Dog", "state": "planned", "progress": 0,
+      "summary": "Singleplayer dog: judgment, needs, genetics, training by cues, wild conquest, orphan puppies, sleep and home.",
+      "items": [
+        { "name": "Judgment and safety (never attacks you or allies)", "state": "planned" },
+        { "name": "Genome, inheritance and coats", "state": "planned" },
+        { "name": "Training by cues, mastery and skills", "state": "planned" },
+        { "name": "Wild dog conquest and orphan puppies", "state": "planned" },
+        { "name": "Voice commands (if the spike passes)", "state": "research" }
+      ]
+    },
+    {
+      "id": "v2", "name": "V2 — The Cat", "state": "planned", "progress": 0,
+      "summary": "Independent cats with affection, naps, warm spots and their own life.",
+      "items": [{ "name": "Cat behavior, affection and coexistence with dogs", "state": "planned" }]
+    },
+    {
+      "id": "v3", "name": "V3 — Multiplayer", "state": "planned", "progress": 0,
+      "summary": "Bond per person, co-guardians, anti-theft rules.",
+      "items": [{ "name": "Owner / co-guardian / stranger model", "state": "planned" }]
+    }
+  ]
+}

@@ -16,6 +16,7 @@ Transformar ideias em especificação verificável. Decide O QUÊ e COMO, não i
 - Escreve os briefs de tarefa e escolhe a camada de modelo de cada um.
 - Revisa planos e responde dúvidas de executores. Recebe escalonamentos após 3 rejeições.
 - Mantém o diário `MODLOG.md` e a lista de pendências.
+- Mantém o site e o README em dia (`CLAUDE.md` §13) e escreve o diário de contexto antes de qualquer compactação (§14).
 
 ## Não faz
 - Não escreve código de produto.

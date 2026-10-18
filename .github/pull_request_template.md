@@ -21,3 +21,5 @@
 - [ ] No secrets or personal data
 - [ ] Invariants respected
 - [ ] MODLOG.md updated
+- [ ] Site/README/status updated if a phase, spike, ADR or player-visible behavior changed (`bash scripts/qa/docs-freshness.sh`)
+- [ ] ASSETS.md updated for any new asset
