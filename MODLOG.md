@@ -119,3 +119,5 @@ Evidence journal. One entry per verified fact or surprise: date, versions that w
 - Fail-closed world id (no display-name fallback). `spHold` is guarded for non-movement keys. `spRunCmds` checks the guard before `spEnsureInGame` (no respawn outside test worlds, and DeathScreen is left open outside them). Kill selectors with only a negated type are refused (lint + lib).
 - Lint checks raw-text tokens: binding manipulation, `SP_LIB_ARGS`, direct `connection.sendCommand`, direct `gameMode.*(`. It is documented as a safety net, not a sandbox.
 - dev-client.sh, stand-ins: every signal now re-checks the process start time, and `stop` takes the lock. Leader dead before `wait` with a dev game running: exit 2 and pidfile kept (case C). Cases A/B stopped the recorded game, and the maintainer's client stayed foreign. A real start/stop and the cause of the 1 fps WebSocket drop are still UNVERIFIED.
+
+- Evidence bank: read-only viewer + validator in `scripts/qa/evidence/` (data in git-ignored `.evidence/data.js`, written only by agents); checked in Chromium over http and Chrome over file:// with the fictional example data only.
