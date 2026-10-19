@@ -39,7 +39,7 @@ Everything below is a design goal from [`docs/spec/SPEC.md`](docs/spec/SPEC.md),
 - **Data-driven.** Tuning numbers, trait ranges, skill trees and danger tables live in config/data, not in code.
 - **Executable behavior specs.** Expected behavior is written as plain-text scenarios and decision tables in [`specs/`](specs/), used as acceptance criteria and as the test suite. Situations nobody anticipated are tracked in [`specs/UNSPECIFIED.md`](specs/UNSPECIFIED.md).
 
-The target Minecraft version (likely 26.x), loader and Java version are not pinned yet; that happens in the toolchain phase of V0.
+Target: Minecraft 26.2 / Fabric / Java 25, proposed in [ADR-0001](docs/adr/0001-stack-pin.md) (awaiting the maintainer's approval).
 
 ## Roadmap
 
@@ -47,14 +47,14 @@ The same data drives the project website (`site/data/status.json`).
 
 | Phase | Scope | State |
 |---|---|---|
-| V0, Foundations | Prove the toolchain and the hardest unknowns (voice, procedural coats, custom entity/model/animation, persistence and travel) before building features. Design spec and behavior specs are done; toolchain and spikes are planned. | In progress |
+| V0, Foundations | Prove the toolchain and the hardest unknowns (voice, procedural coats, custom entity/model/animation, persistence and travel) before building features. Design spec and behavior specs are done; the toolchain spike (S0) is verified with fallbacks (build, unit tests, headless in-game test with screenshot, Prism instance, debug bridge and `mcdev-mcp` tools; `mcmodding-mcp` does not work and video capture is untried); the other spikes are planned. | In progress |
 | V1, The Dog | Singleplayer dog: judgment, needs, genetics, training by cues, wild conquest, orphan puppies, sleep and home. | Planned |
 | V2, The Cat | Independent cats with affection, naps and warm spots. | Planned |
 | V3, Multiplayer | Bond per person, co-guardians, anti-theft rules. | Planned |
 
 ## Project status and getting started
 
-There is nothing to install or build yet, and no build commands exist. They will be recorded in [`CLAUDE.md`](CLAUDE.md) once the toolchain is scaffolded. No product code will be written until the specification and the plan are approved by the maintainer.
+There is nothing to play yet. The toolchain spike (V0-S0) scaffolded a trivial Fabric mod for Minecraft 26.2 (Java 25) that builds, passes its unit tests and runs a headless in-game test; it contains no pet features. The verified build and test commands are in [`CLAUDE.md`](CLAUDE.md) section 1, and the decisions are in [`docs/adr/`](docs/adr/). No product code will be written until the specification and the plan are approved by the maintainer.
 
 If you are curious, the best entry points are:
 - [`docs/spec/SPEC.md`](docs/spec/SPEC.md): the consolidated specification.
