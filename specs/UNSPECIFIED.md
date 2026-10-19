@@ -22,3 +22,5 @@ Found while writing the behavior specs and decision table. For each: what happen
 | 16 | Treat given while the dog is mid-frenzy or asleep | ? | Ignored when asleep; accepted when calm only | pending |
 | 17 | Player spams the same cue every tick | rate-limited | Cooldown 0.5 s per dog | pending |
 | 18 | Cue training while a hostile mob is nearby | ? | Training counts less (distracted) | pending |
+| 19 | `/time set` moves the world day backwards | age stays frozen until the world day passes the old maximum (`AgeClock.ageDays`, ADR-0003) | Keep. Alternative: keep counting needs an own accumulator, which conflicts with CLAUDE.md §6 (no own clock) | pending (human) |
+| 20 | `gamerule advance_time false` (daylight cycle off) | aging stops, because the world clock is frozen (ADR-0003) | Keep. Alternative: count game time while off (conflicts with "age = world day - birth day") | pending (human) |

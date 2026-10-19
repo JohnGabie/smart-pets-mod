@@ -75,3 +75,8 @@ Evidence journal. One entry per verified fact or surprise: date, versions that w
 - Gotcha: the plan's python-free edit of the gametest by string replace silently missed because of tab depth; check diffs after scripted edits.
 - S11 review fixes: the brief's `grep -c SMARTPETS_TIME == 1` check was replaced. The vanilla command feedback echoes each line, so the count is 2 per invocation, and one count cannot tell a plain call from a nether or anomaly call. The runner now greps exact lines tagged `(smartpets)` (3 invocations; 2 plain `day=1 clock=25000`; 1 `day=0 clock=1000 ... anomaly=CLOCK_BACKWARDS`), and the GameTest asserts the journal holds CLOCK_BACKWARDS and 3 TIME_SAMPLE entries. Proof: with the command literal renamed (`timex`), the run fails (`S11 failed: 9 journal has CLOCK_BACKWARDS`, runner exit 1); reverted.
 - `TimeDevCommands.last` is reset on `ServerLifecycleEvents.SERVER_STARTING`. Step 7a now also asserts clock 6000 (was trivially true by day alone).
+
+## 2026-10-18 - S11 close (Task 3, docs only)
+- ADR-0003 (`docs/adr/0003-time-source.md`) written with a behavior table; each row labelled VERIFIED-IN-GAME, UNIT, SIMULATED or SOURCE-ONLY. Nothing was re-run for this entry; it relies on the Task 1-2 runs above.
+- Source-read for the ADR (decompiled 26.2, mcdev static tools): `TimeCommand` (`/time query <timeline> repetition`, `set` takes an int, `add` allows negatives, `pause`/`resume`/`rate`, `no_default_clock` error) and `ServerClockManager` (`addTicks` floors at 0; `tick` gated by `advance_time`; `paused`/`rate` per clock). `DayTimeToClockFix` only found by name.
+- ADR numbering: the S10 and S1 plans also say ADR-0003; they must take the next free number when they close.

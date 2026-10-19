@@ -103,6 +103,9 @@ Fallback: minimal in-house runner for `.feature` text; GameTest-only for platfor
 Question: which world clock gives the monotonic day counter; behavior with sleeping, `/time set`, daylight cycle off.
 PASS: documented behavior + tests; `age_days` monotonic function adopted.
 
+### S11 status (2026-10-18): PASS, pending human approval of [ADR-0003](../adr/0003-time-source.md)
+Day = `minecraft:day` period count on the overworld clock. Verified in the headless GameTest: `/time set` (absolute and backwards), `/time add 1d`, `advance_time` off/on, `time set noon`/`day` markers, the dev command in the nether, `CLOCK_BACKWARDS` through the command path. Unit: monotonic age, elapsed-day rules, forward-jump flag (`AgeClockTest`). Simulated, not real: bed sleep (the wake-up marker call). Source-only: negative `/time add`, `/time pause`/`rate`, `/tick freeze`, `/time` without a default clock, timeline fallback, old-world datafix. Real bed sleep needs a human playtest. Evidence: `MODLOG.md`.
+
 ## Suggested order and parallelism
 S0 → then in parallel: S10, S11, S4, S1(offline part) [pure/core, cheap models ok] · S3, S2 [rendering] · S6, S7, S8 [platform]. S5 after S4. S9 after S6. S1 in-game part after S0+S8.
 Model tiers (see `agents/modelos.md`): S0, S3, S5, S7 hard parts → STRONG; S4, S6, S8, S9 → MEDIUM; fixtures, lang files, boilerplate → FAST.
