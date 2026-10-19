@@ -18,7 +18,7 @@
 - Runnable now: **17 of 67** scenarios, all `@decided`/`@open`, the cue-handling slice of features 01 and 02. **50 are pending.** Executors never edit `.feature` text. Task 1 only appends `@pending`, using the script in Task 1.
 - `core` main and testFixtures have no `net.minecraft`/`net.fabricmc` imports. Task 3 extends `CoreBoundaryTest` to cover testFixtures.
 - Simulation numbers are examples and live only in `SimConfig.defaults()`: hearing 16 blocks, attention 60 ticks (3 s), 3 wake calls.
-- Simulation code is spike code (CLAUDE.md §1). ADR-0003 decides whether it graduates.
+- Simulation code is spike code (CLAUDE.md §1). ADR-0005 decides whether it graduates.
 - Dev commands and the server-tick hook register only after the existing `DevMode.enabled()` guard (`-Dsmartpets.dev=true`).
 - New dependencies are test-only (Cucumber, MIT). Nothing new ships in the mod jar.
 - The repo is public: no absolute paths, user names or e-mails in committed files. The feature-directory path is computed in `mod/build.gradle` and lands only in `build/`.
@@ -51,7 +51,7 @@ specs/behaviors/*.feature (tags only), specs/GLOSSARY.md, specs/matrix/cue-handl
 mod/build.gradle, mod/src/main/java/dev/smartpets/DevCommands.java      (modify)
 mod/src/gametest/java/dev/smartpets/gametest/{GamePetWorld,PlatformScenarios}.java, SmartPetsClientGameTest.java (modify)
 scripts/qa/run-client-gametest.sh                                       (modify)
-docs/adr/0003-behavior-spec-framework.md, docs/spec/{V0-SPIKES,BEHAVIOR-SPECS}.md, MODLOG.md, CLAUDE.md, site/data/status.json, README.md
+docs/adr/0005-behavior-spec-framework.md, docs/spec/{V0-SPIKES,BEHAVIOR-SPECS}.md, MODLOG.md, CLAUDE.md, site/data/status.json, README.md
 ```
 Order: T1 → (T2 ∥ T4) → T3 → (T5 ∥ T6) → T7. Each file has one owning task.
 
@@ -363,7 +363,7 @@ package dev.smartpets.core.sim;
 import dev.smartpets.core.EventJournal;
 import java.util.*;
 
-/** S10 spike: deterministic cue-handling slice (cue-handling.md R1, R2, R4-R10, R13, R18). Disposable unless ADR-0003 graduates it. */
+/** S10 spike: deterministic cue-handling slice (cue-handling.md R1, R2, R4-R10, R13, R18). Disposable unless ADR-0005 graduates it. */
 public final class SimWorld {
 	private static final Set<String> HOSTILE = Set.of("zombie", "creeper");
 	private static final Set<String> STRONGER = Set.of("iron_golem");
@@ -799,7 +799,7 @@ Tier: MEDIUM (spec edit reviewed by the Architect). Branch: `feat/s10-matrix`. D
 
 **Interfaces:**
 - `Matrix.parse(String md)` reads three things: the Dimensions table (values split on `·`, `(…)` notes stripped), the rule ids of the Rules table, and a ```` ```rules ```` block. Block grammar: `Rn: clause & clause`, where a clause is `dim=v` | `dim!=v` | `dim in a,b`. Keywords: `invariant` (not part of first-match) and `fallback` (R25). `#` starts a comment.
-- Writes `core/build/reports/behavior/matrix-cue-handling.md`. Full expansion is 707,616 cells, cheap enough that pairwise is not needed (ADR-0003 records this).
+- Writes `core/build/reports/behavior/matrix-cue-handling.md`. Full expansion is 707,616 cells, cheap enough that pairwise is not needed (ADR-0005 records this).
 
 - [ ] **Step 1: Make the table machine-readable (no behavior change)**
 
@@ -1304,9 +1304,9 @@ git add -A && git commit -m "feat(s10): run one @platform scenario in the game t
 
 Tier: Architect (STRONG). Branch: `docs/s10-close`. Depends on Tasks 1–6.
 
-**Files:** Create `docs/adr/0003-behavior-spec-framework.md`. Modify `docs/spec/V0-SPIKES.md`, `docs/spec/BEHAVIOR-SPECS.md`, `CLAUDE.md` §1, `MODLOG.md`, `site/data/status.json`, `README.md` (roadmap).
+**Files:** Create `docs/adr/0005-behavior-spec-framework.md`. Modify `docs/spec/V0-SPIKES.md`, `docs/spec/BEHAVIOR-SPECS.md`, `CLAUDE.md` §1, `MODLOG.md`, `site/data/status.json`, `README.md` (roadmap).
 
-- [ ] **Step 1: ADR-0003.** Record:
+- [ ] **Step 1: ADR-0005.** Record:
   - Cucumber 8.0.4 through the Suite engine, with root-engine discovery switched off.
   - Why jqwik was rejected, with the evidence (Platform 1.14.4 dependency, the 1.10.1 note, maintenance mode, the maintainers' position on agents), and the in-house runner that replaces it.
   - `@pending` semantics.
@@ -1324,7 +1324,7 @@ Tier: Architect (STRONG). Branch: `docs/s10-close`. Depends on Tasks 1–6.
 - [ ] **Step 6: Commit**
 ```bash
 bash scripts/qa/leak-check.sh
-git add -A && git commit -m "docs: close V0-S10 with ADR-0003 and verified behavior-spec tooling"
+git add -A && git commit -m "docs: close V0-S10 with ADR-0005 and verified behavior-spec tooling"
 ```
 
 ---
