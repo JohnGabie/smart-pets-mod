@@ -21,10 +21,11 @@
         { "name": "Executable behavior specs (67 scenarios, decision table)", "state": "done" },
         { "name": "Toolchain, headless tests and in-game observation (S0): build, unit tests and headless in-game test verified; launcher instance, debug bridge and mcdev-mcp tools verified with the maintainer; mcmodding-mcp not working, video capture untried; ADRs 0001-0002 proposed", "state": "progress" },
         { "name": "World time source (S11): world-day source checked in the headless in-game test; age rule (never goes back when time is set back) unit-tested only, no pets yet; bed sleep simulated; ADR-0003 proposed, awaiting approval", "state": "progress" },
-        { "name": "Voice cue recognition spike", "state": "planned" },
+        { "name": "Voice cue recognition spike (offline plan written; waits for the maintainer's own voice recordings)", "state": "planned" },
+        { "name": "Live QA tooling: scripted dev-client scenarios, repeat runs and a read-only evidence bank (tools, not game features)", "state": "progress" },
         { "name": "Procedural coat textures spike", "state": "planned" },
         { "name": "Custom entity, model and animation spike", "state": "planned" },
-        { "name": "Persistence, catch-up and 'go home' travel spikes", "state": "planned" }
+        { "name": "Persistence, catch-up and 'go home' travel spikes (persistence plan written)", "state": "planned" }
       ]
     },
     {
