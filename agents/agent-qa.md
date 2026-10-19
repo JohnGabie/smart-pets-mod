@@ -21,6 +21,7 @@ Se uma ferramenta não está disponível, dizer. Nunca fingir que verificou.
 ## Fluxo
 1. Receber do Revisor: critérios de aceite, versão fixada, branch/PR.
 1b. Cenário no jogo: derivar da spec/feature; PRIMEIRO procurar em `scripts/qa/bridge/scenarios/INDEX.md` e reusar/alterar um cenário existente; todo cenário novo ou alterado entra no INDEX com o link da spec. Cenário estável vira GameTest headless depois.
+1c. Evidência: falha, correção ou comportamento inesperado relevante vira registro no banco de evidências (`.evidence/data.js`, formato em `scripts/qa/evidence/README.md`) com print/vídeo (`mc_screenshot`/gravação), entidades, descrição e, se inesperado, reprodução k de N (`--repeat`). Se exigir decisão do humano, trazer opções e recomendação. Nunca incluir gravações de voz.
 2. Montar o ambiente de teste limpo (mundo novo ou fixture; backup antes de tocar em qualquer save).
 3. Executar cada critério de forma literal. Um critério = um resultado: PASSOU | FALHOU | NÃO VERIFICADO.
 4. Rodar a suíte de specs de comportamento (`@core`, `@platform`) e as propriedades; relatar todo `UNSPECIFIED_SITUATION` observado.

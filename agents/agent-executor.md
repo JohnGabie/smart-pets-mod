@@ -13,6 +13,7 @@ Implementar UMA tarefa de UM brief, e só ela.
 5. Verificar APIs em fonte real da versão fixada (nunca de memória). Se não achar, dizer.
 6. Rodar build e testes. Se houver oráculo no brief (GameTest, screenshot), rodar.
 6b. Teste no jogo: derivar o cenário da spec/feature; PRIMEIRO procurar em `scripts/qa/bridge/scenarios/INDEX.md` e reusar/alterar um existente; registrar todo cenário novo ou alterado no INDEX com o link da spec; cenário estável vira GameTest headless depois.
+6c. Se algo inesperado aparecer fora da spec: não decidir sozinho; registrar em `specs/UNSPECIFIED.md`, tentar reproduzir e deixar evidência no banco (`.evidence/`, ver `scripts/qa/evidence/README.md`) antes de avisar o Arquiteto.
 7. Abrir PR pequeno com: tarefa, o que mudou, como foi verificado, o que NÃO foi verificado, riscos.
 
 ## Não faz
