@@ -6,7 +6,7 @@ scenario name, or a `specs/UNSPECIFIED.md` row). Promote stable scenarios to hea
 
 Run: `bash scripts/qa/run-bridge-scenario.sh <name> [--repeat N] [--seed S]`. Format: `../README.md`.
 
-Header convention, `.cmds` (lint-enforced: scenario, purpose):
+Header convention, `.cmds` (lint-enforced: scenario, purpose, needs):
 ```
 # scenario: <name>
 # purpose: <one line>
@@ -18,4 +18,4 @@ Header convention, `.groovy` (lint-enforced: timeoutMs, `return spReport()`): `/
 
 | # | Name | Purpose | Preconditions | Files | Covers (spec) | Status | Last run |
 |---|---|---|---|---|---|---|---|
-| 1 | smoke-world | Toolkit self-test: test world, day, clear, creative, walled arena, tamed wolf + zombie seen by spNearby, survival, kill, close to title, reopen | dev client up with DebugBridge; creates `sp-test-flat` if missing | `smoke-world.cmds`, `smoke-world.groovy` | none (toolkit self-test; no product behavior exists yet) | VERIFIED (6/6 passes: 1 + `--repeat 3 --seed 7` + `--repeat 2 --seed 100`) | 2026-10-19 |
+| 1 | smoke-world | Toolkit self-test: test world, day, clear, creative, walled arena, tamed wolf + zombie seen by spNearby, survival, kill, close to title, reopen | dev client up with DebugBridge; creates `sp-test-flat` if missing | `smoke-world.cmds`, `smoke-world.groovy` | none (toolkit self-test; no product behavior exists yet) | VERIFIED (fix wave: `SP_FAST=1 --repeat 3 --seed 1` 3/3, default mode 1/1 at ~1 fps) | 2026-10-19 |

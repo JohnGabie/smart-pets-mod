@@ -31,6 +31,7 @@ Guardião da qualidade. Valida se o que foi escrito faz sentido, segue a spec e 
 - Segurança e origem: sem segredos, sem dados pessoais, sem arquivos do jogo, sem assets de licença incompatível.
 - Se o PR muda fase, spike, ADR ou comportamento visível: `site/data/status.json`, README e aba Developers foram atualizados (`scripts/qa/docs-freshness.sh`)?
 - PR descreve honestamente o verificado e o não verificado?
+- Evidência do cliente ao vivo (bridge, `scripts/qa/bridge/`) está apoiada por GameTest ou marcada como exploratória? Cenário novo/alterado está em `scripts/qa/bridge/scenarios/INDEX.md` com link da spec?
 
 ## Veredito (formato)
 ```

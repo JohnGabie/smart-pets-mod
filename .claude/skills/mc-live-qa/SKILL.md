@@ -11,9 +11,13 @@ Thin entry point. The durable tools are repo scripts, so any agent or model can 
 ## 1. Safety gate (check before any write action)
 - Dev instance only: `python3 scripts/qa/bridge/bridge.py status` must report `gameDir` ending in `mod/run`
   (bridge.py refuses `exec` otherwise, exit 5). Never use the Prism instance or a personal profile.
-- Ownership: drive a client only if you started it (`bash scripts/qa/dev-client.sh start --headless`), or the
-  maintainer said in this session that the visible client is free to use. Otherwise use read-only calls only.
-- Never quit, leave or join on a client you did not start. `dev-client.sh stop` only stops its own client.
+- Ownership: drive a client only if the maintainer said in this session that the visible client is free to use,
+  or you started it yourself. `bash scripts/qa/dev-client.sh start --headless` / `stop` is UNVERIFIED with a real
+  game (mechanics tested with stand-ins only), so use it only while the human is watching until it has been run
+  once. Otherwise use read-only calls only (`bridge.py status|snapshot|screenshot|raw chatHistory`).
+- Never quit, leave or join on a client you did not start. `dev-client.sh stop` refuses anything it did not start.
+- World guard: every world-changing helper refuses unless the open world is `sp-test*`.
+  `SP_ALLOW_ANY_WORLD=1` overrides it and is logged. Only use it if the human asks.
   One game instance at a time (7 GB RAM): no second client and no GameTest run while a client is up.
 - The maintainer's worlds are theirs. Do test work in `sp-test-flat` (disposable, created by the library).
 - Teleport, give and kill are SETUP. They are logged as such and never belong in a "no teleport" check.
@@ -24,22 +28,26 @@ Thin entry point. The durable tools are repo scripts, so any agent or model can 
 2. Setup goes in `<name>.cmds` as plain vanilla commands, one per line, run as the player (`~`, `@s`). Use
    `# wait N ticks` and `# needs: test-world`. Assertions go in `<name>.groovy`, ending with `return spReport()`.
 3. Lint and run: `bash scripts/qa/run-bridge-scenario.sh <name>` (add `--repeat N --seed S` to explore flaky
-   behavior; the Groovy side sees `SP_SEED` and `SP_RUN`).
+   behavior; the Groovy side sees `SP_SEED` and `SP_RUN`. Only SP_SEED is seeded, not world RNG or mob AI).
 4. Evidence: the summary JSON, `mod/run/qa-runs/<stamp>-<name>/run-<i>.json`, the JSONL log, and screenshots
    (`bridge.py screenshot --out f.jpg` + `bash scripts/qa/check-screenshot.sh f.jpg`). Look at a screenshot
    with the Read tool when the claim is visual.
 5. Add or update the INDEX.md row (spec link, status, date). Live results are exploratory: say so, and propose
    a GameTest for anything that must stay true.
-6. Before you stop, call `spRestoreDisplay()` (vsync back + options saved). Leave the client in a world or on the
-   title screen, survival, and report the final state.
+6. Ad-hoc `bridge.py exec` calls are not covered by the runner's exit trap: end them with `spRestoreDisplay()`
+   if you used `SP_FAST=1`. Leave the client in a world or on the title screen, survival, and report the final state.
 
 ## 3. Batching rules (speed)
 - One scenario = one bridge call. Never one tool call per game action. `timeoutMs` up to 300000 works: the
   `script.max_execution_time_ms: 5000` in debugbridge.json does not cap a per-call `timeoutMs` (verified 20 s).
 - Do game-thread work inside `sync { }`. Sleep and wait OUTSIDE `sync{}`, because a sleep inside it freezes the
   game, and with it ticks and held keys.
-- Each `sync{}` hop waits for a frame. An unfocused window with vsync on runs at about 1 fps (1 s per hop).
-  `spBegin`/`spEnsureInGame` call `spFast()`, which cuts this to about 33 ms.
+- Each `sync{}` hop waits for a frame. An unfocused window with vsync on runs at about 1 fps (1 s per hop; smoke
+  takes about 2.5 min). `SP_FAST=1` (env) lets `spFast()` turn vsync off in memory, and smoke drops to about 10 s.
+  The runner ALWAYS calls `spRestoreDisplay()` at exit, which restores vsync/pauseOnLostFocus and saves options.
+- A failed setup command (red chat feedback that is not a known no-op) fails the run. Read `failed.feedback`.
+- At about 1 fps the bridge WebSocket may drop during a world reload while the script keeps running. The runner
+  recovers the result from `qa-runs/<runId>.report.json`.
 - Ad-hoc call from MCP: `mc_execute` with `evaluate(new File('<repo>/scripts/qa/bridge/sp-lib.groovy'))` once per
   client session (closures persist in the binding), or the shell: `bridge.py exec --lib -e '...'`.
 
