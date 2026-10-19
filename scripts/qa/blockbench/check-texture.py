@@ -17,6 +17,10 @@ Checks: size; power of two; alpha mode; every UV island inside the texture; no t
 island (except --allow-hole); painted pixels outside every island (warning); palette stats (distinct colors, top 8).
 UV islands come from the model, never from the image: for a .bbmodel every enabled cube face `uv` (scaled from
 the project resolution to the PNG size); for a .geo.json every cube (box UV from `uv` + `size`, or per-face UV).
+Notes: --size replaces the model-size check (the model then only supplies islands and UV scale). Edge pixels are
+conservative: a pixel only partly covered by a fractional island edge counts as inside, so it may report a hole.
+--allow-hole names are `element:face` for a .bbmodel (e.g. head_cube:north), `bone#cube:face` for a .geo.json
+(e.g. head#0:north), or the uv-json name. Images above MAX_PIXELS (4096x4096) are refused before decoding (exit 2).
 """
 import argparse
 import json
@@ -30,6 +34,25 @@ except ImportError:  # pragma: no cover
     sys.exit(2)
 
 FACES = ("north", "east", "south", "west", "up", "down")
+
+# Mod textures are small (16x16 .. 512x512). Anything above this is refused before decoding: the pixel loops
+# below are pure Python O(w*h), and Pillow's own bomb check only errors at 2x its default limit.
+MAX_PIXELS = 4096 * 4096
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
+
+
+class InputError(ValueError):
+    """Malformed or refused input (exit 2)."""
+
+
+def res_size(width, height, where):
+    try:
+        w, h = int(width), int(height)
+    except (TypeError, ValueError):
+        raise InputError(f"{where}: texture size must be numbers, got {width!r}x{height!r}")
+    if w <= 0 or h <= 0:
+        raise InputError(f"{where}: texture size must be positive, got {w}x{h}")
+    return (w, h)
 
 
 def box_uv_rects(size, u, v):
@@ -53,7 +76,9 @@ def norm(rect):
 def islands_from_bbmodel(doc):
     """Returns (islands, (res_w, res_h)). Islands: list of (name, rect) in project-resolution units."""
     res = doc.get("resolution") or {}
-    res_wh = (res.get("width", 16), res.get("height", 16))
+    if not isinstance(res, dict):
+        raise InputError("bbmodel: resolution must be an object")
+    res_wh = res_size(res.get("width", 16), res.get("height", 16), "bbmodel resolution")
     out = []
     for el in doc.get("elements", []):
         if el.get("type", "cube") != "cube":
@@ -72,10 +97,10 @@ def islands_from_bbmodel(doc):
 def islands_from_geo(doc):
     geos = doc.get("minecraft:geometry") or []
     if not geos:
-        raise ValueError("no minecraft:geometry in model")
+        raise InputError("no minecraft:geometry in model")
     geo = geos[0]
     desc = geo.get("description", {})
-    res_wh = (desc.get("texture_width", 16), desc.get("texture_height", 16))
+    res_wh = res_size(desc.get("texture_width", 16), desc.get("texture_height", 16), "geo description")
     out = []
     for bone in geo.get("bones", []):
         for i, cube in enumerate(bone.get("cubes", [])):
@@ -99,11 +124,13 @@ def islands_from_geo(doc):
 def load_model(path):
     with open(path, encoding="utf-8") as fh:
         doc = json.load(fh)
+    if not isinstance(doc, dict):
+        raise InputError(f"model top level must be a JSON object, got {type(doc).__name__}")
     if "minecraft:geometry" in doc:
         return islands_from_geo(doc)
     if "elements" in doc or "meta" in doc:
         return islands_from_bbmodel(doc)
-    raise ValueError("unknown model format (expected .bbmodel or .geo.json)")
+    raise InputError("unknown model format (expected .bbmodel or .geo.json)")
 
 
 def is_pot(n):
@@ -130,9 +157,11 @@ def load_palette(path):
 
 def check(png, size=None, model=None, uv_json=None, alpha="cutout", allow_holes=(), allow_npot=False,
           max_colors=None, palette=None):
-    """Returns a report dict: {ok, errors, warnings, stats}. Raises OSError/ValueError on unreadable input."""
+    """Returns a report dict: {ok, errors, warnings, stats}. Raises InputError/OSError (or other errors on malformed input)."""
     errors, warnings = [], []
-    img = Image.open(png)
+    img = Image.open(png)  # lazy: only the header is read here
+    if img.size[0] * img.size[1] > MAX_PIXELS:
+        raise InputError(f"image {img.size[0]}x{img.size[1]} exceeds the {MAX_PIXELS}-pixel cap (not decoded)")
     has_alpha = img.mode in ("RGBA", "LA", "PA") or (img.mode == "P" and "transparency" in img.info)
     img = img.convert("RGBA")
     w, h = img.size
@@ -244,8 +273,8 @@ def main(argv=None):
         palette = load_palette(args.palette) if args.palette else None
         rep = check(args.png, args.size, args.model, args.uv_json, args.alpha, args.allow_hole, args.allow_npot,
                     args.max_colors, palette)
-    except (OSError, ValueError, KeyError, json.JSONDecodeError) as e:
-        print(f"check-texture: cannot read input: {e}", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001 - any malformed input (bad shapes, bombs) is exit 2, not a traceback
+        print(f"check-texture: cannot read input: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
     if args.json:
         print(json.dumps(rep, indent=2))

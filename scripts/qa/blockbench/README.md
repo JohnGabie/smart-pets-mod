@@ -1,15 +1,16 @@
 # Blockbench toolkit (agent-autonomous model, texture and animation checks)
 
-Lets an agent build, validate, render and export Blockbench models with no human and no GUI, and check
-textures with Pillow. Renders are exploratory evidence for the author: the final oracle stays in-game
+Lets an agent build, validate and render Blockbench models (geometry, textures, animation poses) and export
+their GEOMETRY (`.geo.json`) with no human and no GUI, and check textures with Pillow. Animation JSON export has
+no headless route (see below). Renders are exploratory evidence for the author: the final oracle stays in-game
 (DebugBridge screenshot, client GameTest, ADR-0002). Whether a model "looks good" is the human's call
 (CLAUDE.md §8). First run: 2026-10-19 (see `MODLOG.md`).
 
 | File | What |
 |---|---|
-| `bb-call.sh` | one headless MCP tool call (`--list`, or `<tool> '<json>'` / `@args.json`); refuses to run unless the plugin checkout is at the reviewed pin and clean |
+| `bb-call.sh` | one headless MCP tool call (`--list`, or `<tool> '<json>'` / `@args.json`); fails closed (exit 2) unless the plugin checkout is at the reviewed pin with a clean tracked tree, the bun binary matches the recorded sha256 and Node is >= 23.6; `BB_MCP_DIR`/`BB_NODE_BIN`/`BB_BUN` overrides are maintainer-only and refused without `BB_ALLOW_OVERRIDE=1`. Other files in `node_modules` are NOT hash-checked |
 | `check-texture.py` | PNG validator (stdlib + Pillow): size vs model, power of two, alpha mode, UV islands from a `.bbmodel` / `.geo.json` / UV list (out of bounds, holes, paint outside), palette stats and limits |
-| `test_check_texture.py` | 16 tests on crafted images: `python3 -m unittest discover -s scripts/qa/blockbench -p 'test_*.py'` |
+| `test_check_texture.py` | 22 tests on crafted images (incl. oversized and malformed input -> exit 2). Run from the repo root: `python3 -m unittest discover -s scripts/qa/blockbench -p 'test_*.py'` (expect `Ran 22 tests ... OK`; delete `scripts/qa/blockbench/__pycache__` afterwards) |
 
 ## Installed software (user level, outside the repo, no sudo)
 
@@ -37,6 +38,11 @@ bash scripts/qa/blockbench/bb-call.sh --root "$W" bbmodel_render '{"file":"m.bbm
 bash scripts/qa/blockbench/bb-call.sh --root "$W" bbmodel_export_bedrock_geometry '{"file":"m.bbmodel","output":"export/assets/smartpets/geckolib/models/entity/m.geo.json","identifier":"geometry.m"}'
 python3 scripts/qa/blockbench/check-texture.py "$W/m.png" --model "$W/m.bbmodel"
 ```
+`check-texture.py` notes: `--size` replaces the model-size check (the model then only gives islands and UV
+scale). Edges are conservative: a pixel only partly covered by a fractional island edge counts as inside, so it may
+be reported as a hole. `--allow-hole` takes `element:face` for a `.bbmodel` (e.g. `head_cube:north`),
+`bone#cube:face` for a `.geo.json` (e.g. `head#0:north`), or a uv-json name. Images above 4096x4096 pixels are
+refused before decoding, and any malformed model or image is exit 2 with a message.
 Then open the PNG with the image reader and look at it. Views: front, back, left, right, three-quarter, iso, top
 (front = -Z). One render takes about 0.45 s. `bbmodel_contact_sheet` works too, but through `call.ts` it writes
 into a private folder under the OS temp dir (no `--scratch` option there): prefer `bbmodel_render` with `output`.
@@ -63,7 +69,7 @@ Loading the desktop MCP plugin and the GeckoLib plugin is a GUI step (File > Plu
 maintainer once; the agent does not click it. Until then E3/E4-desktop/E6-plugin stay UNVERIFIED.
 
 ## Safety rules
-- Pin: `bb-call.sh` checks the commit. To move the pin, read the diff of `headless/` and `bin/` first, then update
+- Pin: `bb-call.sh` checks the commit and the bun sha256 (`BUN_SHA256`). To move the pin, read the diff of `headless/` and `bin/` first, then update
   `PIN` here and in `MODLOG.md`.
 - Reviewed in v1.10.1 (`headless/`): MCP over **stdio only**; no HTTP listener, no `eval`/`new Function`. Child
   processes: `npm install` (first render, in the cache folder), `node cli.mjs` per render, and `blockbench_launch`
@@ -73,7 +79,7 @@ maintainer once; the agent does not click it. Until then E3/E4-desktop/E6-plugin
 - Do not call `blockbench_launch` from the headless server: it starts the GUI app outside this README's Xvfb rules.
 - Desktop plugin (when loaded later): its HTTP server binds loopback and rejects non-loopback Origin/Host (README,
   not yet read in source); keep `risky_eval` OFF; load a pinned local file, never "load from URL".
-- Render deps are installed by `npm install` from version ranges (no lockfile upstream). The resulting lock hash is
+- The FIRST render runs `npm install` with network access, from version ranges (no lockfile upstream). The resulting lock hash is
   recorded above; a reinstall may pull newer versions. Read install scripts before letting npm run them
   (`webgpu` postinstall is macOS-only `xattr`; `sharp` install is a libvips check).
 - Never put Mojang textures, traced copies or decompiled code in the workspace that gets committed. Examples and
@@ -91,5 +97,5 @@ maintainer once; the agent does not click it. Until then E3/E4-desktop/E6-plugin
 | E5 | animation frames | PASS (headless) | 2-keyframe `nod`: head pose changed between t=0 and t=1; `walk` 9 frames, frame 0 == frame 8 (same hash), symmetric frames identical |
 | E6 | GeckoLib export, file layout | PARTIAL | `.geo.json` exported headless into `assets/smartpets/geckolib/models/entity/` (scratch); animation JSON only via scratch converter into `geckolib/animations/entity/`; GeckoLib plugin export UNVERIFIED |
 | E7 | GeckoLib loads the files in game | NOT RUN | needs a throwaway branch with GeckoLib 5.5.5 and a client GameTest |
-| E8 | `check-texture.py` | PASS (crafted) | 16 unit tests; scratch textures pass; a broken copy fails (semi alpha, hole, paint outside). Vanilla wolf PNG run not done |
+| E8 | `check-texture.py` | PASS (crafted) | reproducible from the repo: the 22 unit tests (command above). Scratch only (outside the repo, not reproducible from it): the test textures passed and a broken copy failed (semi alpha, hole, paint outside). Vanilla wolf PNG run not done |
 | E9-E14 | in-game preview, coats, props, pixel-art generator, anim quality loop | NOT RUN | |

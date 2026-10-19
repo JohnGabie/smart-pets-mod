@@ -171,6 +171,49 @@ class CheckTextureTest(unittest.TestCase):
         self.assertFalse(rep["ok"])
         self.assertIn("#ffffff", " ".join(rep["errors"]))
 
+    # --- refused / malformed input is exit 2 with a message, never a traceback or a hang
+    def assert_exit2(self, *argv):
+        import contextlib
+        import io
+        import time
+        err = io.StringIO()
+        t0 = time.monotonic()
+        with contextlib.redirect_stderr(err):
+            code = ct.main(list(argv))
+        self.assertEqual(code, 2, err.getvalue())
+        self.assertIn("cannot read input", err.getvalue())
+        self.assertLess(time.monotonic() - t0, 5.0)
+        return err.getvalue()
+
+    def test_oversized_image_refused_before_decoding(self):
+        big = self.save_img(Image.new("1", (4097, 4097)), "big.png")  # 1-bit: small file, 16.8 M pixels
+        self.assertIn("pixel cap", self.assert_exit2(big))
+
+    def test_decompression_bomb_is_exit_2(self):
+        old = ct.Image.MAX_IMAGE_PIXELS
+        self.addCleanup(setattr, ct.Image, "MAX_IMAGE_PIXELS", old)
+        ct.Image.MAX_IMAGE_PIXELS = 10  # Pillow raises DecompressionBombError above 2x this
+        self.assertIn("DecompressionBombError", self.assert_exit2(self.save_img(Image.new("RGBA", (16, 16)))))
+
+    def test_malformed_geo_uv_short(self):
+        model = self.save_json(geo(uv=[1]), "m.geo.json")
+        self.assert_exit2(self.save_img(good_image()), "--model", model)
+
+    def test_malformed_model_top_level_list(self):
+        model = self.save_json([1, 2, 3], "m.bbmodel")
+        self.assertIn("JSON object", self.assert_exit2(self.save_img(good_image()), "--model", model))
+
+    def test_malformed_geo_uv_size_not_iterable(self):
+        doc = geo()
+        doc["minecraft:geometry"][0]["bones"][0]["cubes"][0]["uv"] = {"north": {"uv": [0, 0], "uv_size": 5}}
+        self.assert_exit2(self.save_img(good_image()), "--model", self.save_json(doc, "m.geo.json"))
+
+    def test_malformed_zero_resolution(self):
+        doc = bbmodel()
+        doc["resolution"]["width"] = 0
+        self.assertIn("must be positive", self.assert_exit2(self.save_img(good_image()), "--model",
+                                                            self.save_json(doc, "m.bbmodel")))
+
     def test_opaque_mode(self):
         img = Image.new("RGBA", (16, 16), (1, 2, 3, 255))
         self.assertTrue(self.run_check(img, alpha="opaque")["ok"])
