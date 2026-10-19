@@ -40,6 +40,8 @@ python3 scripts/qa/blockbench/check-texture.py "$W/m.png" --model "$W/m.bbmodel"
 Then open the PNG with the image reader and look at it. Views: front, back, left, right, three-quarter, iso, top
 (front = -Z). One render takes about 0.45 s. `bbmodel_contact_sheet` works too, but through `call.ts` it writes
 into a private folder under the OS temp dir (no `--scratch` option there): prefer `bbmodel_render` with `output`.
+Each call that writes (render, web link) leaves one `blockbench-mcp-headless-<uuid>` folder in the OS temp dir;
+delete the ones your run created when done.
 
 Facts learned on the first run (all on this machine, 2026-10-19):
 - The renderer worked with no X display, no Xvfb and no GPU setup. Forcing the Vulkan driver (`VK_DRIVER_FILES` =
