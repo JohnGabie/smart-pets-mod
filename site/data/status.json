@@ -1,10 +1,10 @@
 {
-  "updated": "2026-10-17",
+  "updated": "2026-10-18",
   "project": {
     "name": "Smart Pets",
     "tagline": "Dogs (and later cats) with judgment, personality, genetics and a bond that grows.",
     "stage": "Pre-alpha — design and toolchain. No playable build yet.",
-    "targetVersion": "Minecraft Java 26.x (Fabric)",
+    "targetVersion": "Minecraft Java 26.2 (Fabric)",
     "license": "GPL-3.0-or-later"
   },
   "links": {
@@ -14,12 +14,12 @@
   },
   "phases": [
     {
-      "id": "v0", "name": "V0 — Foundations", "state": "progress", "progress": 35,
+      "id": "v0", "name": "V0 — Foundations", "state": "progress", "progress": 40,
       "summary": "Prove the toolchain and the hardest unknowns before building features.",
       "items": [
         { "name": "Consolidated design spec and gap review", "state": "done" },
         { "name": "Executable behavior specs (67 scenarios, decision table)", "state": "done" },
-        { "name": "Toolchain, headless tests and in-game observation (S0)", "state": "planned" },
+        { "name": "Toolchain, headless tests and in-game observation (S0): build, unit tests and headless in-game test verified; launcher instance, debug bridge and mcdev-mcp tools verified with the maintainer; mcmodding-mcp not working, video capture untried; ADRs 0001-0002 proposed", "state": "progress" },
         { "name": "Voice cue recognition spike", "state": "planned" },
         { "name": "Procedural coat textures spike", "state": "planned" },
         { "name": "Custom entity, model and animation spike", "state": "planned" },

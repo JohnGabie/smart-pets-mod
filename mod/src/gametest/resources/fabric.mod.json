@@ -1,0 +1,10 @@
+{
+	"schemaVersion": 1,
+	"id": "smartpets-test",
+	"version": "1.0.0",
+	"name": "Smart Pets tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": ["dev.smartpets.gametest.SmartPetsClientGameTest"]
+	}
+}

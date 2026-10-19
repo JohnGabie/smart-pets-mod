@@ -1,6 +1,5 @@
 plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
-	id 'maven-publish'
 }
 
 base.archivesName = 'smartpets'
@@ -11,6 +10,15 @@ loom {
 		"smartpets" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
+		}
+	}
+	runs {
+		// The 'clientGameTest' run is created by fabricApi.configureTests; configure it when it appears.
+		// Dev-only commands (DevMode) are registered only when this property is set.
+		configureEach {
+			if (name == "clientGameTest") {
+				property "smartpets.dev", "true"
+			}
 		}
 	}
 }
@@ -36,3 +44,17 @@ java {
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
 }
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "smartpets-test"
+		// Server GameTests off until one exists: when on, Loom hooks runGameTest into check/build.
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}
+
+// Surface gametest compile errors in ./gradlew build without launching a game (runClientGameTest stays manual).
+tasks.named('check') { dependsOn 'compileGametestJava' }

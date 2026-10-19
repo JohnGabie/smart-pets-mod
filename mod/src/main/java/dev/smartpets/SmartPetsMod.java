@@ -11,6 +11,7 @@ public class SmartPetsMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		DevCommands.register();
 		LOGGER.info("SmartPets initialized (core: {})", dev.smartpets.core.CoreInfo.NAME);
 	}
 
