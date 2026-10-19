@@ -122,3 +122,4 @@ Evidence journal. One entry per verified fact or surprise: date, versions that w
 
 - Evidence bank: read-only viewer + validator in `scripts/qa/evidence/` (data in git-ignored `.evidence/data.js`, written only by agents); checked in Chromium over http and Chrome over file:// with the fictional example data only.
 - dev-client.sh start/wait/stop VERIFIED with a real game (2026-10-19), visible and headless; smoke-world 1/1 each; clean exit (no process/port/pidfile; vsync true). Still stand-in only: exit-2 path, PID-reuse races.
+- Assets license: CC BY-SA 4.0 for original assets confirmed by the maintainer (2026-10-19). Open: whether AI-generated textures are allowed in-game (CLAUDE.md §5 only bans AI images on the mod page/icon/gallery); vanilla-derived assets rule (use only UV layout as reference, never Mojang pixels) pending.

@@ -99,7 +99,7 @@ Planned third-party dependencies and compatibility:
 - Fabric API: Apache-2.0, compatible with GPLv3.
 - GeckoLib: MIT, compatible with GPLv3.
 
-Original art, sound and text assets are **proposed** to be licensed under CC BY-SA 4.0. This is pending maintainer confirmation and is not final. Third-party assets and their licenses are tracked in [`ASSETS.md`](ASSETS.md); no asset with restrictive "all rights reserved" terms is accepted.
+Original art, sound and text assets are licensed under CC BY-SA 4.0 (confirmed by the maintainer on 2026-10-19). Third-party assets and their licenses are tracked in [`ASSETS.md`](ASSETS.md); no asset with restrictive "all rights reserved" terms is accepted.
 
 ## Credits and inspiration
 

@@ -99,7 +99,7 @@ Estilo visual e sonoro, números de balanceamento, mudança de escopo, publicaç
 - Quem encontra algo fora do escopo registra no diário e avisa o Arquiteto; não corrige por conta própria.
 
 ## 11. Licença, publicação e IA
-Licença decidida pelo humano: software livre, e quem usar o código deve mantê-lo livre: código sob GPL-3.0-or-later (copyleft forte); assets originais propostos sob CC BY-SA 4.0 (a confirmar). Dependências devem ser compatíveis com GPLv3 (registrar em `ASSETS.md`/ADR).
+Licença decidida pelo humano: software livre, e quem usar o código deve mantê-lo livre: código sob GPL-3.0-or-later (copyleft forte); assets originais sob CC BY-SA 4.0 (confirmado pelo humano em 2026-10-19; compatível com GPLv3 só nessa direção). Dependências devem ser compatíveis com GPLv3 (registrar em `ASSETS.md`/ADR).
 O projeto usa IA. Plataformas exigem divulgação e contribuição humana significativa (design, direção, testes de jogo, ajuste). Manter o diário de decisões. Ver `docs/26`.
 
 ## 12. Idioma
