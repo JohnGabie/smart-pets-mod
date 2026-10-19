@@ -6,9 +6,12 @@
 #             Refuses if a dev game JVM is already running or a bridge port (9876-9886) answers.
 #   wait      blocks until the bridge answers (default 300 s), exit 4 on timeout.
 #   status    prints pidfile/ownership/bridge state (JSON-ish lines), never changes anything.
-#   stop      ONLY for a client this script started (pidfile + matching process start time): asks the game to
-#             quit through the bridge, waits, then signals the process GROUP recorded in the pidfile (by number).
-#             Never touches a client it did not start; never kills by name.
+#   stop      ONLY for a client this script started (pidfile + matching process start times): asks the game to
+#             quit through the bridge (only if no foreign client is up and the bridge gameDir is this repo's
+#             mod/run), waits, then signals OUR game JVM pids and the leader's process group (by number).
+#             Exits 2 if it is still running afterwards. Never touches a client it did not start; never by name.
+#   Status: refusals/status/wait verified; a REAL game start/stop is UNVERIFIED (mechanics tested with a stand-in).
+#   Not detected: nothing beyond /proc command lines (a client in a container or another user's session).
 # Files: mod/run/qa-runs/dev-client.pid ("<pgid> <starttime>"), mod/run/qa-runs/dev-client-<stamp>.log
 # Exit: 0 ok; 1 refused (already running / not ours); 2 failed to start/stop; 4 timeout; 64 usage.
 set -euo pipefail
@@ -19,36 +22,59 @@ BRIDGE="$ROOT/scripts/qa/bridge/bridge.py"
 GAME_MARK='loom-cache/projects/mod/launch.cfg'   # in the game JVM command line (-Dfabric.dli.config=...)
 
 proc_start() { awk '{print $22}' "/proc/$1/stat" 2>/dev/null || true; }   # field 22 = start time (clock ticks)
+proc_ppid() { awk '{print $4}' "/proc/$1/stat" 2>/dev/null || true; }
+alive_as() { [ -d "/proc/$1" ] && [ "$(proc_start "$1")" = "$2" ]; }   # pid alive AND same process (not reused)
 
-game_pids() {  # dev game JVMs of THIS repo, read-only scan of /proc (no pkill/pgrep -f)
+scan() {  # read-only /proc scan (no pkill/pgrep -f). $1 = repo|any
   local d c
   for d in /proc/[0-9]*; do
     c=$( { tr '\0' ' ' < "$d/cmdline"; } 2>/dev/null || true)   # processes may vanish mid-scan
-    case "$c" in *"$ROOT/.gradle/$GAME_MARK"*) echo "${d#/proc/}";; esac
+    case "$1:$c" in
+      repo:*"$ROOT/.gradle/$GAME_MARK"*) echo "${d#/proc/}" ;;
+      # any Minecraft client JVM (Prism/vanilla/Fabric). A client without DebugBridge is only seen here.
+      any:*"$ROOT/.gradle/$GAME_MARK"*|any:*net.minecraft.client.main.Main*|any:*KnotClient*|any:*org.prismlauncher.EntryPoint*) echo "${d#/proc/}" ;;
+    esac
   done
 }
+game_pids() { scan repo; }
 
-bridge_up() { python3 "$BRIDGE" status >/dev/null 2>&1; }
-
-owned() {  # pidfile exists, its process-group leader is alive and has the recorded start time
-  [ -f "$PIDFILE" ] || return 1
-  local pg st
-  read -r pg st < "$PIDFILE" || return 1
-  [[ "$pg" =~ ^[0-9]+$ ]] || return 1
-  [ -d "/proc/$pg" ] && [ "$(proc_start "$pg")" = "$st" ]
+descends_from() {  # pid $1 has ancestor $2 (walks ppid; Gradle may fork a single-use daemon in between)
+  local p="$1" n=0
+  while [ -n "$p" ] && [ "$p" -gt 1 ] && [ $n -lt 32 ]; do
+    [ "$p" = "$2" ] && return 0
+    p=$(proc_ppid "$p"); n=$((n + 1))
+  done
+  return 1
 }
 
-group_alive() { [ -n "$(ps -o pid= -g "$1" 2>/dev/null)" ]; }
+bridge_gamedir() { python3 "$BRIDGE" status 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["gameDir"])' 2>/dev/null || true; }
+bridge_up() { python3 "$BRIDGE" status >/dev/null 2>&1; }
+
+# pidfile line 1: "<leader pid> <starttime>"; optional line 2: "game <pid> <starttime>" (recorded by `wait`)
+leader() { head -1 "$PIDFILE" 2>/dev/null; }
+owned_leader() { [ -f "$PIDFILE" ] || return 1; local pg st; read -r pg st < <(leader) || return 1; [[ "$pg" =~ ^[0-9]+$ ]] && alive_as "$pg" "$st"; }
+owned_game() {  # recorded game JVM still alive as the same process
+  [ -f "$PIDFILE" ] || return 1
+  local tag gp gst; read -r tag gp gst < <(sed -n 2p "$PIDFILE") || return 1
+  [ "$tag" = game ] && alive_as "$gp" "$gst" && echo "$gp"
+}
+owned() { owned_leader || owned_game > /dev/null; }
+our_games() {  # repo game JVMs that descend from our leader, plus the recorded one
+  local pg g; pg=$(leader | cut -d' ' -f1)
+  { owned_game || true; for g in $(game_pids); do if owned_leader && descends_from "$g" "$pg"; then echo "$g"; fi; done; } | sort -u
+}
 
 cmd_start() {
   local headless=0
   [ "${1:-}" = "--headless" ] && headless=1
-  if owned; then echo "already running (ours): pgid $(cut -d' ' -f1 "$PIDFILE")"; exit 0; fi
-  [ -f "$PIDFILE" ] && { echo "stale pidfile removed"; rm -f "$PIDFILE"; }
-  local g; g=$(game_pids | xargs)
-  [ -z "$g" ] || { echo "REFUSED: a dev game JVM is already running (pid $g), not started by this script" >&2; exit 1; }
-  bridge_up && { echo "REFUSED: a DebugBridge already answers on 9876-9886 (another client is up)" >&2; exit 1; }
   mkdir -p "$RUNS"
+  exec 9> "$RUNS/dev-client.lock"
+  flock -n 9 || { echo "REFUSED: another dev-client.sh start is in progress" >&2; exit 1; }
+  if owned; then echo "already running (ours): $(leader)"; exit 0; fi
+  [ -f "$PIDFILE" ] && { echo "stale pidfile removed"; rm -f "$PIDFILE"; }
+  local g; g=$(scan any | xargs)
+  [ -z "$g" ] || { echo "REFUSED: a Minecraft client JVM is already running (pid $g), not started by this script" >&2; exit 1; }
+  bridge_up && { echo "REFUSED: a DebugBridge already answers on 9876-9886 (another client is up)" >&2; exit 1; }
   local log; log="$RUNS/dev-client-$(date +%Y%m%d-%H%M%S).log"
   cd "$ROOT"
   local launch='./gradlew --no-daemon :mod:runClient'
@@ -56,29 +82,32 @@ cmd_start() {
   rm -f "$PIDFILE.new"
   # setsid may fork (when the caller is a group leader), so the new session leader records its OWN pid, then execs
   SP_PIDNEW="$PIDFILE.new" SP_LAUNCH="$launch" setsid bash -c \
-    'echo "$$ $(awk "{print \$22}" /proc/$$/stat)" > "$SP_PIDNEW"; eval "exec nohup $SP_LAUNCH"' > "$log" 2>&1 < /dev/null &
+    'echo "$$ $(awk "{print \$22}" /proc/$$/stat)" > "$SP_PIDNEW"; eval "exec nohup $SP_LAUNCH"' > "$log" 2>&1 < /dev/null 9>&- &
   for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$PIDFILE.new" ] && break; sleep 0.2; done
   [ -s "$PIDFILE.new" ] || { echo "FAILED: launcher did not start, see $log" >&2; exit 2; }
   mv "$PIDFILE.new" "$PIDFILE"
-  local pid; pid=$(cut -d' ' -f1 "$PIDFILE")
   sleep 1
-  owned || { echo "FAILED: launcher exited at once, see $log" >&2; rm -f "$PIDFILE"; exit 2; }
-  echo "started pgid $pid ($([ "$headless" = 1 ] && echo headless || echo visible)); log $log"
+  owned_leader || { echo "FAILED: launcher exited at once, see $log" >&2; rm -f "$PIDFILE"; exit 2; }
+  echo "started leader $(leader | cut -d' ' -f1) ($([ "$headless" = 1 ] && echo headless || echo visible)); log $log"
   echo "next: bash scripts/qa/dev-client.sh wait"
 }
 
 cmd_wait() {
   local t="${1:-300}"
   python3 "$BRIDGE" wait --timeout-s "$t" || { echo "bridge not up after ${t}s (consent screen? crash? see the newest $RUNS/dev-client-*.log)" >&2; exit 4; }
+  if owned_leader && ! owned_game > /dev/null; then   # remember our game JVM so stop works even if Gradle exits first
+    local g; g=$(our_games | head -1)
+    [ -n "$g" ] && { echo "game $g $(proc_start "$g")" >> "$PIDFILE"; echo "recorded game jvm $g"; }
+  fi
 }
 
 cmd_status() {
-  local g; g=$(game_pids | xargs)
-  echo "game_jvm_pids: ${g:-none}"
-  if owned; then echo "owned_by_script: yes (pgid $(cut -d' ' -f1 "$PIDFILE"))"
+  echo "minecraft_jvm_pids: $(scan any | xargs)"
+  echo "repo_dev_game_pids: $(game_pids | xargs)"
+  if owned; then echo "owned_by_script: yes (leader $(leader | cut -d' ' -f1), games: $(our_games | xargs))"
   elif [ -f "$PIDFILE" ]; then echo "owned_by_script: no (stale pidfile)"
   else echo "owned_by_script: no"; fi
-  if bridge_up; then echo "bridge: up"; python3 "$BRIDGE" status | head -c 400; echo; else echo "bridge: down"; fi
+  if bridge_up; then echo "bridge: up, gameDir $(bridge_gamedir)"; else echo "bridge: down"; fi
 }
 
 cmd_stop() {
@@ -86,27 +115,33 @@ cmd_stop() {
     [ -f "$PIDFILE" ] && { echo "stale pidfile removed (process gone or reused)"; rm -f "$PIDFILE"; }
     echo "REFUSED: no client started by this script is running; not touching anything else" >&2; exit 1
   fi
-  local pg; pg=$(cut -d' ' -f1 "$PIDFILE")
-  # graceful: DebugBridge `quit` (needs session_control_enabled). Sent ONLY if every running dev game JVM is in
-  # our process group: the bridge port does not say which process answers, so a foreign client must not be up.
-  local g mine=1 any=0
-  for g in $(game_pids); do any=1; [ "$(ps -o pgid= -p "$g" 2>/dev/null | tr -d ' ')" = "$pg" ] || mine=0; done
-  local grace=5
-  if [ "$any" = 1 ] && [ "$mine" = 1 ] && bridge_up; then
+  local pg ours foreign="" g grace=5
+  pg=$(leader | cut -d' ' -f1)
+  ours=$(our_games | xargs)
+  for g in $(scan any); do case " $ours " in *" $g "*) ;; *) foreign="$foreign $g" ;; esac; done
+  # graceful `quit` only when: our game JVM exists, NO foreign client is up (the port does not say who answers),
+  # and the answering bridge reports this repo's gameDir
+  if [ -n "$ours" ] && [ -z "$foreign" ] && [ "$(bridge_gamedir)" = "$ROOT/mod/run" ]; then
     grace=60
     python3 - "$BRIDGE" <<'PY' || true
 import importlib.util, sys
 spec = importlib.util.spec_from_file_location("bridge", sys.argv[1]); b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
 br = b.Bridge(); print("quit:", br.request("quit", {}, timeout_s=10).get("success")); br.close()
 PY
+  elif [ -n "$foreign" ]; then echo "foreign client(s) up (pid$foreign): no bridge quit; signals go to our pids only"
   fi
-  for _ in $(seq 1 "$grace"); do group_alive "$pg" || break; sleep 1; done
-  if group_alive "$pg"; then echo "still up after $grace s: SIGTERM to process group $pg"; kill -TERM -- "-$pg" 2>/dev/null || true
-    for _ in $(seq 1 15); do group_alive "$pg" || break; sleep 1; done
-  fi
-  if group_alive "$pg"; then echo "SIGKILL to process group $pg"; kill -KILL -- "-$pg" 2>/dev/null || true; sleep 1; fi
-  group_alive "$pg" && { echo "FAILED to stop process group $pg" >&2; exit 2; }
-  rm -f "$PIDFILE"; echo "stopped (pgid $pg)"
+  alive() { local p; for p in $ours; do [ -d "/proc/$p" ] && return 0; done; owned_leader && [ -n "$(ps -o pid= -g "$pg" 2>/dev/null)" ]; }
+  for _ in $(seq 1 "$grace"); do alive || break; sleep 1; done
+  local sig
+  for sig in TERM KILL; do
+    alive || break
+    echo "still up: SIG$sig to game pid(s) [$ours] and process group $pg"
+    for g in $ours; do kill "-$sig" "$g" 2>/dev/null || true; done
+    owned_leader && kill "-$sig" -- "-$pg" 2>/dev/null || true
+    for _ in $(seq 1 15); do alive || break; sleep 1; done
+  done
+  if alive; then echo "FAILED: still running after TERM/KILL (game [$ours], group $pg); pidfile kept" >&2; exit 2; fi
+  rm -f "$PIDFILE"; echo "stopped (leader $pg, game [$ours])"
 }
 
 case "${1:-}" in
@@ -114,5 +149,5 @@ case "${1:-}" in
   wait) shift; cmd_wait "$@" ;;
   status) cmd_status ;;
   stop) cmd_stop ;;
-  *) sed -n 2,12p "$0"; exit 64 ;;
+  *) sed -n 2,17p "$0"; exit 64 ;;
 esac
