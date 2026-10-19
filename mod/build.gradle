@@ -1,6 +1,5 @@
 plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
-	id 'maven-publish'
 }
 
 base.archivesName = 'smartpets'
@@ -56,3 +55,6 @@ fabricApi {
 		eula = true
 	}
 }
+
+// Surface gametest compile errors in ./gradlew build without launching a game (runClientGameTest stays manual).
+tasks.named('check') { dependsOn 'compileGametestJava' }
