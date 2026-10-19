@@ -10,6 +10,8 @@ public class SmartPetsClientGameTest implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			singleplayer.getConnection().waitForChunksRender();
+			singleplayer.getServer().runCommand("smartpets debug ping");
+			context.waitTicks(5);
 			context.takeScreenshot("s0-world");
 		}
 	}

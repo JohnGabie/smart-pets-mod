@@ -20,6 +20,32 @@ Deliver:
 PASS: a trivial mod builds, launches in the dev instance, an agent obtains a screenshot + state through MCP, GameTest produces a screenshot, the reviewer→QA loop runs once on a trivial PR.
 Fallback: if a tool fails for the pinned version, choose another tool or version; record in ADR.
 
+### S0 status (2026-10-18): PASS-WITH-FALLBACK; human verifications done (Prism, DebugBridge, mcdev-mcp)
+Not a full PASS: `mcmodding-mcp` does not work, `mc_record_video`/`mc_execute`/session-control tools were not tried, and the Task 7 PR reviewer->QA loop was not run. ADRs: [ADR-0001 stack pin](../adr/0001-stack-pin.md), [ADR-0002 observation stack](../adr/0002-observation-stack.md). Evidence: `MODLOG.md`.
+
+Verified (run and observed):
+- Pin: Minecraft 26.2 (not 26.3: no DebugBridge build), Fabric Loader 0.19.5, Fabric API 0.161.0+26.2, Loom 1.18-SNAPSHOT, Gradle 9.7.1, Temurin JDK 25 (user-level). Fallbacks taken: Loom 1.18-SNAPSHOT from the template instead of the announced 1.17; JDK in the user's home instead of a system install.
+- Scaffold: `core` (plain Java) + `mod` (Fabric), core bundled Jar-in-Jar; `./gradlew build` and `./gradlew :core:test` (5 tests) pass.
+- Headless client GameTest: `bash scripts/qa/run-client-gametest.sh` produces a non-blank screenshot (`OK range=16..235`) under Xvfb with Mesa llvmpipe; a failing test fails the runner.
+- Dev-only command `/smartpets debug ping` (only with `-Dsmartpets.dev=true`) and the `core` `EventJournal`; the ping is checked by the runner.
+- `mcdev-mcp init -v 26.2` indexes the decompiled 26.2 source (needs JDK 25 first on `PATH` and `JAVA_TOOL_OPTIONS=-Xmx3g`).
+- Per-task reviewer loop ran on S0 Tasks 1-6 (branches stacked, one per task). Task 8 (docs close) had no task review.
+- Prism (human-assisted, 2026-10-18): instance "SmartPets Dev" (Minecraft 26.2, Fabric Loader 0.19.5, Java 25 via Prism), mod + Fabric API installed with `scripts/dev/install-to-prism.sh`. Its `latest.log` shows `Loading Minecraft 26.2 with Fabric Loader 0.19.5`, `java 25`, `fabric-api 0.161.0+26.2`, `smartpets 0.0.0-dev` (nested `dev_smartpets_core 0.0.0-dev`) and `SmartPets initialized (core: smartpets-core)`, with no ERROR/Exception lines. No DebugBridge in that instance. The human used their normal Microsoft account in Prism.
+- DebugBridge + mcdev-mcp (human-assisted, 2026-10-18): `./gradlew :mod:runClient` in a visible terminal (offline dev user; 401 auth / Realms errors in the log are unrelated). The human clicked "I Understand - Enable Mod"; `mod/run/config/debugbridge.json` then had `developer_mode_accepted=true` (`run_command_enabled=false`, `session_control_enabled=false`, `web_ui_enabled=true`) and port 9876 listened on 127.0.0.1 only. `mcdev-mcp@2.2.1` (approved in a Claude Code session started inside the repo): `mc_version` list/set 26.2 OK (decompiled, indexed, callgraph), `mc_search` Wolf returned WolfModel/WolfRenderer/WolfRenderState and others, `mc_connect` OK (Minecraft 26.2, port 9876, mappings passthrough, session control disabled), `mc_snapshot` returned player/world JSON, `mc_screenshot` returned a 427x240 JPEG of the pause menu and `check-screenshot.sh` printed `OK range=0..255`.
+- Reminder, not a measurement: the snapshot reported fps 1 while the Prism game was also open (two game instances at once, about 1 GB RAM free). Keep to one game instance at a time.
+
+NOT working or not tried:
+- `mcmodding-mcp@0.5.0`: shows `Failed to reconnect` / CONNECTION_CLOSED in `/mcp`. Observed on a bounded run (`npx -y mcmodding-mcp@0.5.0` with stdin from /dev/null): npm failed installing into its npx cache with `ENOTEMPTY ... rename ... node_modules/@xenova/transformers`, and the docs DB directory `~/.local/share/mcmodding-mcp` does not exist. Likely a half-written npx cache entry; not confirmed and not repaired. Not required for S0.
+- `mc_record_video`, `mc_execute` and the session-control tools were not tried.
+
+Also open: the Task 7 PR reviewer->QA loop is still not run.
+Also open: the PR flow (labels, reviewer verdict on the PR, human merge in stack order) happens when the human merges the S0 branches.
+
+Follow-ups:
+- Blockbench MCP and short video capture (`mc_record_video`) move to S3.
+- Fabric 26.3: stay on 26.2 until a trigger in ADR-0001 fires.
+- Deferred minors (details in ADR-0002): runner checks only the first PNG; oracle checks only the luma range (weak for dark scenes); `enableGameTests = false` until a server GameTest exists; `EventJournal` null/mutability contract. (`fetch-debugbridge.sh` leaving a bad jar on sha512 failure was fixed at S0 close.)
+
 ## S1 — Voice cue recognition (highest risk)
 Question: can learned arbitrary sounds/words be recognized reliably, in any language, locally, inside the game?
 Method: (1) offline harness in pure Java `core` with recorded WAV fixtures (author + one other speaker; at least two languages; ambient noise; speech that is not a cue); features (e.g., MFCC) + alignment-based matching (e.g., DTW) or a small embedding model; strictness parameter tied to dog intelligence. (2) In-game capture (push-to-talk) on the pinned stack, off the main thread. (3) Latency and CPU.
