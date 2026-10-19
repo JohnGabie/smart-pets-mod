@@ -35,8 +35,8 @@ Non-goals (for now)
 - **Stack** [O]: Minecraft version (likely 26.x, unobfuscated), Fabric, Java version required by that version, GeckoLib availability for that version. Pinned in the repo at scaffold time (V0-S0).
 
 ## 4. Time and age
-- Clock = world day counter (the "Day N" of F3 / `/time query day`), not real time [D]. Verify exact source and edge cases in spike S11 (sleep, `/time set`, daylight-cycle off).
-- `age_days = max(previous_age_days, current_day − birth_day)` — monotonic, never decreases even if time is set backwards [P].
+- Clock = world day counter, not real time [D]: the period count of the `minecraft:day` timeline on the overworld clock (expected to equal F3 "Day #", source-read, not looked at in game; `/time query minecraft:day repetition`), read on the server whatever the dimension. S11 decided pending human approval; edge cases (sleep, `/time set`, `advance_time` off) in [ADR-0003](../adr/0003-time-source.md).
+- `age_days = max(previous_age_days, max(0, current_day − birth_day))` — monotonic, never decreases even if time is set backwards; frozen until the world day passes the old maximum; not capped [P]. `advance_time false` stops aging [P]. Open questions: `specs/UNSPECIFIED.md` #19, #20.
 - Mod year = 10 world days [T/O]. Life span 8–16 mod years by gene (80–160 days).
 - Stages: puppy 0–1y, adolescent 1–2y, adult 2y→75% of lifespan, senior last 25% [T].
 - Catch-up on load: needs, loneliness, rust, aging use elapsed days with caps (long absences are never punished like neglect) [D].

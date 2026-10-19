@@ -5,6 +5,9 @@
 	"name": "Smart Pets tests",
 	"environment": "*",
 	"entrypoints": {
-		"fabric-client-gametest": ["dev.smartpets.gametest.SmartPetsClientGameTest"]
+		"fabric-client-gametest": [
+			"dev.smartpets.gametest.SmartPetsClientGameTest",
+			"dev.smartpets.gametest.TimeSourceClientGameTest"
+		]
 	}
 }

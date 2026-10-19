@@ -1,5 +1,6 @@
 package dev.smartpets;
 
+import dev.smartpets.time.TimeDevCommands;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ public class SmartPetsMod implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		DevCommands.register();
+		TimeDevCommands.register();
 		LOGGER.info("SmartPets initialized (core: {})", dev.smartpets.core.CoreInfo.NAME);
 	}
 

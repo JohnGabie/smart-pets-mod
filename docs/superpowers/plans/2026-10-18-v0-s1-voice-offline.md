@@ -4,7 +4,7 @@
 
 **Goal:** A pure-Java offline harness that answers, with numbers and confidence intervals from the maintainer's own recordings, whether user-trained voice cues (commands and pet names, PT-BR and EN) can be recognized reliably enough for S1: a `CueRecognizer` interface, an MFCC + DTW template matcher with a strictness parameter, a sidecar slot for an external engine, a corpus manifest and validator, a recording script, and an evaluation report (accuracy, false accepts, confusion, latency).
 
-**Architecture:** DSP and recognizers live in `core` (`dev.smartpets.core.voice`, zero Minecraft/Fabric imports, JDK only; may graduate to V1 if ADR-0003 says so). Evaluation tooling lives in a new plain-Java Gradle project `tools/voice-eval` (`:voice-eval`, `application` plugin, depends on `:core`, never bundled into the mod jar, never graduates). External engines (Vosk, sherpa-onnx, whisper.cpp) are NOT linked into the JVM: they plug in as a sidecar process behind the same interface through a one-line stdout protocol, so no Gradle module gets a native dependency. Audio lives outside the repository in `$SMARTPETS_VOICE_CORPUS`.
+**Architecture:** DSP and recognizers live in `core` (`dev.smartpets.core.voice`, zero Minecraft/Fabric imports, JDK only; may graduate to V1 if ADR-0006 says so). Evaluation tooling lives in a new plain-Java Gradle project `tools/voice-eval` (`:voice-eval`, `application` plugin, depends on `:core`, never bundled into the mod jar, never graduates). External engines (Vosk, sherpa-onnx, whisper.cpp) are NOT linked into the JVM: they plug in as a sidecar process behind the same interface through a one-line stdout protocol, so no Gradle module gets a native dependency. Audio lives outside the repository in `$SMARTPETS_VOICE_CORPUS`.
 
 **Tech Stack:** Java 25 (Temurin 25.0.4.1+1), Gradle 9.7.1 wrapper, JUnit 6.1.3 (BOM), `javax.sound.sampled` (JDK) for WAV I/O, sox `rec`/`soxi`/`play` for recording (installed per `MODLOG.md`). No third-party libraries.
 
@@ -17,7 +17,7 @@
 - Recordings are personal data. They live only under `$SMARTPETS_VOICE_CORPUS` (outside the repo; the recording script refuses a path inside it). Never commit audio, per-file reports, or the corpus path. Committed: schema, an example manifest with rows labeled `FAKE ROW`, prompts, scripts, code, aggregate reports approved by the human.
 - `core` imports only `java.*`/`javax.*` (the existing `CoreBoundaryTest` scans `core/src/main/java` recursively). No native code in any module.
 - Numbers in `Config.defaults()` (thresholds, margins, frame sizes) are starting EXAMPLES; they are config, chosen on the `tune` split, never on `test`/`holdout`.
-- Code is GPL-3.0-or-later. Any future engine must be GPLv3-compatible, pinned, and recorded in ADR-0003 and `ASSETS.md` if it ships data.
+- Code is GPL-3.0-or-later. Any future engine must be GPLv3-compatible, pinned, and recorded in ADR-0006 and `ASSETS.md` if it ships data.
 - The strictness-to-intelligence mapping is NOT decided here (open question); the matcher only exposes `strictness` in [0, 1], 1 = strictest.
 - Tiers: FAST = RÁPIDO, MEDIUM = MÉDIO, STRONG = FORTE (`agents/modelos.md`). One task = one branch = one PR; branches are stacked in task order unless marked parallel.
 - Commits: Conventional Commits; trailer lines as given by the executing harness for the executing model (no model names in repo files, see `agents/modelos.md`). Run `bash scripts/qa/leak-check.sh` before every commit. Never commit to `main`.
@@ -54,7 +54,7 @@ tools/voice-eval/src/test/java/dev/smartpets/voiceeval/
   ManifestTest.java StatsTest.java EvaluatorTest.java ExternalProcessRecognizerTest.java
 specs/voice/MANIFEST-SCHEMA.md  specs/voice/manifest.example.tsv  specs/voice/prompts.tsv
 scripts/voice/record-prompts.sh
-docs/adr/0003-voice-cue-recognition.md       (skeleton, Task 12)
+docs/adr/0006-voice-cue-recognition.md       (skeleton, Task 12)
 $SMARTPETS_VOICE_CORPUS/ (OUTSIDE the repo)  manifest.tsv  audio/<session>/<phrase_id>__t<take>.wav  reports/
 ```
 
@@ -74,7 +74,7 @@ Tier: FAST. Branch: `feat/s1-guards`. Depends on nothing.
 - [ ] **Step 1: Append to `.gitignore`**
 
 ```
-# Voice corpus: personal data, never in git (V0-S1, ADR-0003)
+# Voice corpus: personal data, never in git (V0-S1, ADR-0006)
 *.wav
 *.flac
 *.opus
@@ -2094,7 +2094,7 @@ Restore in `VoiceEvalMain` the `external` case shown in Task 8 Step 5.
 - [ ] **Step 3: Run, record the research notes, commit**
 
 Run: `./gradlew :voice-eval:test` → BUILD SUCCESSFUL; 2 new tests pass.
-Put this table in the PR description and later in ADR-0003 (Task 12). It comes from an earlier research note; each "verified" item must be re-checked at the source before any engine is adopted (CLAUDE.md §4):
+Put this table in the PR description and later in ADR-0006 (Task 12). It comes from an earlier research note; each "verified" item must be re-checked at the source before any engine is adopted (CLAUDE.md §4):
 
 | Engine | License (to re-verify) | Fit | Wrapper idea (not built here) |
 |---|---|---|---|
@@ -2103,7 +2103,7 @@ Put this table in the PR description and later in ADR-0003 (Task 12). It comes f
 | whisper.cpp tiny/base | MIT (unverified) | multilingual; reported hallucination on silence/short clips; heavier | sidecar CLI with a GBNF grammar from `vocab.tsv` |
 | openWakeWord, Porcupine | non-commercial / proprietary models (reported) | excluded (license) | none |
 
-Hypothesis for ADR-0003 (not a decision): engine for fixed command words + template matcher for pet names.
+Hypothesis for ADR-0006 (not a decision): engine for fixed command words + template matcher for pet names.
 ```bash
 bash scripts/qa/leak-check.sh
 git add tools/voice-eval/src && git commit -m "feat(s1): add external engine sidecar slot"
@@ -2275,18 +2275,18 @@ Everything in this task can only happen after the maintainer has recorded. Agent
 
 ---
 
-### Task 12: ADR-0003 skeleton and status
+### Task 12: ADR-0006 skeleton and status
 
 Tier: STRONG (architect). Branch: `docs/s1-adr`. Can start after Task 9; filled after Task 11.
 
 **Files:**
-- Create: `docs/adr/0003-voice-cue-recognition.md`
+- Create: `docs/adr/0006-voice-cue-recognition.md`
 - Modify: `docs/spec/V0-SPIKES.md` (S1 status line), `site/data/status.json` + README roadmap table (CLAUDE.md §13), `MODLOG.md`
 
-- [ ] **Step 1: Write the skeleton** — `docs/adr/0003-voice-cue-recognition.md`:
+- [ ] **Step 1: Write the skeleton** — `docs/adr/0006-voice-cue-recognition.md`:
 
 ```markdown
-# ADR-0003: Voice cue recognition (offline part of V0-S1)
+# ADR-0006: Voice cue recognition (offline part of V0-S1)
 
 - Status: Draft (offline harness built; verdict waits for the maintainer's recordings)
 - Spike: V0-S1 (`docs/spec/V0-SPIKES.md`); plan `docs/superpowers/plans/2026-10-18-v0-s1-voice-offline.md`
@@ -2322,7 +2322,7 @@ What graduates to V1 (`core` voice package?), what stays spike-only (`tools/voic
 ```
 
 - [ ] **Step 2: Status** — set S1 to "in progress (offline harness ready, waiting for recordings)" in `docs/spec/V0-SPIKES.md`, `site/data/status.json` and the README table; run `bash scripts/qa/docs-freshness.sh` and `bash scripts/qa/leak-check.sh`.
-- [ ] **Step 3: Commit** — `git add docs/adr/0003-voice-cue-recognition.md docs/spec/V0-SPIKES.md site/data/status.json README.md MODLOG.md && git commit -m "docs: add ADR-0003 skeleton for voice cue recognition"`. After Task 11, the architect fills Results/Verdict on the same branch or a follow-up `docs/s1-verdict`.
+- [ ] **Step 3: Commit** — `git add docs/adr/0006-voice-cue-recognition.md docs/spec/V0-SPIKES.md site/data/status.json README.md MODLOG.md && git commit -m "docs: add ADR-0006 skeleton for voice cue recognition"`. After Task 11, the architect fills Results/Verdict on the same branch or a follow-up `docs/s1-verdict`.
 
 ---
 
