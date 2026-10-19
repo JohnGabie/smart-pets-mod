@@ -13,6 +13,7 @@ Usage:
   bridge.py snapshot
   bridge.py screenshot [--out file.jpg]
   bridge.py wait-in-world [--timeout-s 60]
+  bridge.py check-report FILE --nonce N --scenario S   # validate an on-disk spReport file (no bridge needed)
   bridge.py raw <type> ['{json payload}']       # READ-ONLY allowlist only (see RAW_ALLOW)
 
 --lib loads scripts/qa/bridge/sp-lib.groovy into the persistent binding first
@@ -218,7 +219,8 @@ def unwrap(v):
 def lib_prelude():
     path = LIB.replace("\\", "/").replace("'", "\\'")
     flag = lambda k: "true" if os.environ.get(k) == "1" else "false"
-    return "SP_FAST = %s; SP_ALLOW_ANY_WORLD = %s\nevaluate(new File('%s'))\n" % (flag("SP_FAST"), flag("SP_ALLOW_ANY_WORLD"), path)
+    # explicit load argument; the library defaults both flags to false on every load and removes SP_LIB_ARGS
+    return "SP_LIB_ARGS = [fast: %s, allowAnyWorld: %s]\nevaluate(new File('%s'))\n" % (flag("SP_FAST"), flag("SP_ALLOW_ANY_WORLD"), path)
 
 
 def lint_snippet(code):
@@ -252,8 +254,15 @@ def cmd_exec(b, a):
         bad = lint_snippet(code)
         if bad:
             raise BridgeError("lint refused the code: " + " | ".join(bad), 65)
+    flag = lambda k: "true" if os.environ.get(k) == "1" else "false"
     if a.lib:
-        code = lib_prelude() + code
+        pre = lib_prelude()
+    else:  # library already in the binding (or not): flags still come from THIS call's environment
+        pre = "if (binding.hasVariable('spResetFlags')) { SP_FAST = %s; SP_ALLOW_ANY_WORLD = %s }\n" % (flag("SP_FAST"), flag("SP_ALLOW_ANY_WORLD"))
+    # the code runs inside a closure so the flags are reset afterwards even on error/return; consequence: no
+    # `import` lines in exec code (use fully-qualified names or java.type)
+    code = (pre + "try { return ({ ->\n" + code + "\n}).call() } finally { if (binding.hasVariable('spResetFlags')) { spResetFlags()%s } }\n"
+            % ("; spRestoreDisplay()" if os.environ.get("SP_FAST") == "1" else ""))
     t = max(1000, min(a.timeout, 300000))
     msg = b.request("execute", {"code": code, "timeoutMs": t}, timeout_s=t / 1000.0 + 5)
     res = unwrap(msg.get("result"))
@@ -286,6 +295,10 @@ def main(argv=None):
     s.add_argument("--out")
     ww = sub.add_parser("wait-in-world")
     ww.add_argument("--timeout-s", type=float, default=60)
+    cr = sub.add_parser("check-report")
+    cr.add_argument("file")
+    cr.add_argument("--nonce", required=True)
+    cr.add_argument("--scenario", required=True)
     r = sub.add_parser("raw")
     r.add_argument("type")
     r.add_argument("payload", nargs="?", default="{}")
@@ -293,6 +306,16 @@ def main(argv=None):
         a = p.parse_args(argv)
     except SystemExit as ex:
         return 64 if ex.code else 0
+    if a.cmd == "check-report":  # offline: the runner's recovery path after a dropped connection
+        try:
+            rep = json.load(open(a.file, encoding="utf-8"))
+        except (OSError, ValueError) as ex:
+            return out({"ok": False, "error": "unreadable report: %s" % ex, "exit": 2}, 2)
+        if rep.get("nonce") != a.nonce or rep.get("scenario") != a.scenario:
+            return out({"ok": False, "error": "report does not belong to this run (nonce/scenario mismatch)",
+                        "got": {"nonce": rep.get("nonce"), "scenario": rep.get("scenario")}, "exit": 2}, 2)
+        return out({"ok": bool(rep.get("ok")), "result": rep, "recovered": "from on-disk report after a dropped bridge connection"},
+                   0 if rep.get("ok") else 1)
     try:
         if a.cmd == "wait":
             end = time.time() + a.timeout_s

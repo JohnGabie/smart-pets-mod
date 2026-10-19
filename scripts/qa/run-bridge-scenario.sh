@@ -47,8 +47,8 @@ fi
 
 out="$ROOT/mod/run/qa-runs/$(date +%Y%m%d-%H%M%S)-$sname"
 mkdir -p "$out"
-restore() {  # put back every client option the library changed (vsync, pauseOnLostFocus); best effort
-  python3 "$B/bridge.py" exec --lib --timeout 60000 -e 'return spRestoreDisplay()' > "$out/restore.json" 2>&1 || true
+restore() {  # guard back on, fast off, client options back (vsync, pauseOnLostFocus); best effort
+  python3 "$B/bridge.py" exec --lib --timeout 60000 -e 'def f = spResetFlags(); return [flags: f, display: spRestoreDisplay()]' > "$out/restore.json" 2>&1 || true
 }
 trap restore EXIT
 b64() { printf '%s' "$1" | base64 -w0; }   # paths/names reach Groovy as base64 data, never as code
@@ -56,10 +56,14 @@ fails=(); worst=0
 for i in $(seq 1 "$repeat"); do
   s=$(( seed + i - 1 ))
   f="$out/run-$i.groovy"
+  nonce="$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')$$"
+  run_id="$(date +%Y%m%d-%H%M%S)-$sname-r$i-$nonce"   # unique: random hex + runner pid
+  rep="$ROOT/mod/run/qa-runs/$run_id.report.json"
+  rm -f "$rep" "$rep.tmp"
   {
     echo "SP_SEED = ${s}L; SP_RUN = $i"
     echo "def __d = { String b -> new String(java.util.Base64.getDecoder().decode(b), 'UTF-8') }"
-    echo "spBegin(__d('$(b64 "$sname-r$i")'))"
+    echo "spBegin(__d('$(b64 "$sname-r$i")'), [runId: __d('$(b64 "$run_id")'), nonce: __d('$(b64 "$nonce")'), scenario: __d('$(b64 "$sname")')])"
     if [ -n "$cmds" ]; then
       echo "def __setup = spRunCmds(__d('$(b64 "$cmds")'))"
       echo "spExpect('setup', __setup.ok, __setup)"
@@ -72,20 +76,13 @@ for i in $(seq 1 "$repeat"); do
   python3 "$B/bridge.py" exec --lib -f "$f" --timeout "$timeout_ms" > "$out/run-$i.json"
   rc=$?
   if [ "$rc" -eq 2 ] && grep -q 'connection closed' "$out/run-$i.json"; then
-    # the script keeps running in the game; wait for the report file spReport() writes (runId ends with -<name>-r<i>)
-    echo "run $i: bridge connection dropped (world reload?); waiting for the on-disk report" >&2
-    rep=""
+    # the script keeps running in the game; wait for EXACTLY this run's report (unique runId) and check its nonce
+    echo "run $i: bridge connection dropped (world reload?); waiting for $run_id.report.json" >&2
     while [ $(( $(date +%s) - t_start )) -lt $(( timeout_ms / 1000 + 10 )) ]; do
-      rep=$(find "$ROOT/mod/run/qa-runs" -maxdepth 1 -name "*-$sname-r$i.report.json" -newer "$f" 2>/dev/null | head -1)
-      [ -n "$rep" ] && break; sleep 2
+      [ -s "$rep" ] && break; sleep 2
     done
-    if [ -n "$rep" ]; then
-      python3 - "$rep" "$out/run-$i.json" <<'PY'
-import json, sys
-r = json.load(open(sys.argv[1]))
-json.dump({"ok": bool(r.get("ok")), "result": r, "recovered": "from on-disk report after a dropped bridge connection"}, open(sys.argv[2], "w"))
-PY
-      if python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["ok"] else 1)' "$out/run-$i.json"; then rc=0; else rc=1; fi
+    if [ -s "$rep" ]; then
+      set +e; python3 "$B/bridge.py" check-report "$rep" --nonce "$nonce" --scenario "$sname" > "$out/run-$i.json"; rc=$?; set -e
     fi
   fi
   set -e

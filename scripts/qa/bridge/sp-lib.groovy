@@ -17,14 +17,25 @@ if (!binding.hasVariable('spState') || spState == null) {
 // Original values of every client option this library changes, recorded at the FIRST change in this client
 // session (kept across spBegin and library reloads). spRestoreDisplay() puts them all back.
 if (!binding.hasVariable('spOrig') || spOrig == null) spOrig = [:]
-if (!binding.hasVariable('SP_FAST')) SP_FAST = false                       // bridge.py --lib sets these from env
-if (!binding.hasVariable('SP_ALLOW_ANY_WORLD')) SP_ALLOW_ANY_WORLD = false
+// Flags come from an EXPLICIT argument on every load and default to false: a plain
+// `evaluate(new File(sp-lib.groovy))` (MCP) always gets guard ON and fast OFF. bridge.py --lib passes
+// SP_LIB_ARGS = [fast: <SP_FAST=1>, allowAnyWorld: <SP_ALLOW_ANY_WORLD=1>]. spReport() and the runner's exit trap
+// call spResetFlags(), so nothing stays on after a run.
+def __args = binding.hasVariable('SP_LIB_ARGS') ? (SP_LIB_ARGS ?: [:]) : [:]
+SP_FAST = (__args.fast == true)
+SP_ALLOW_ANY_WORLD = (__args.allowAnyWorld == true)
+if (binding.hasVariable('SP_LIB_ARGS')) binding.variables.remove('SP_LIB_ARGS')
+spResetFlags = { -> SP_FAST = false; SP_ALLOW_ANY_WORLD = false; return [fast: SP_FAST, allowAnyWorld: SP_ALLOW_ANY_WORLD] }
 
 spStamp = { -> java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern('yyyyMMdd-HHmmss')) }  // Groovy 5: no Date.format
 
-spBegin = { String name = 'run' ->
+spBegin = { String name = 'run', Map o = [:] ->
+  // o.runId/o.nonce/o.scenario: set by the runner (unique per run); ad-hoc callers get a timestamp id
   def ts = spStamp()
-  spState = [runId: "${ts}-${name}".toString(), steps: [], setup: [], setupFailures: [], arena: spState?.arena, t0: System.currentTimeMillis()]
+  def rid = o.runId ?: "${ts}-${name}-${Long.toHexString(new Random().nextLong() & 0xffffffffL)}".toString()
+  if (!(rid ==~ /[A-Za-z0-9_-]+/)) throw new IllegalArgumentException("bad runId: ${rid}".toString())
+  spState = [runId: rid, nonce: o.nonce, scenario: o.scenario ?: name, steps: [], setup: [], setupFailures: [],
+             arena: spState?.arena, t0: System.currentTimeMillis()]
   def dir = new File('qa-runs'); dir.mkdirs()
   spLog('begin', [name: name, display: spFast()])
   return [runId: spState.runId, log: new File(dir, spState.runId + '.jsonl').canonicalPath]
@@ -76,12 +87,19 @@ spStep = { String name, Closure body ->  // run a step; exceptions become a fail
 }
 
 spReport = { ->
-  def r = [ok: !spState.steps.isEmpty() && spState.steps.every { it.ok }, runId: spState.runId,
-           ms: System.currentTimeMillis() - spState.t0, setup: spState.setup, steps: spState.steps]
+  def r = [ok: !spState.steps.isEmpty() && spState.steps.every { it.ok }, runId: spState.runId, nonce: spState.nonce,
+           scenario: spState.scenario, ms: System.currentTimeMillis() - spState.t0, setup: spState.setup, steps: spState.steps]
+  r.flags = spResetFlags()  // guard back on, fast off: nothing stays enabled after a run
+  r.display = spRestoreDisplay()
   spLog('report', [ok: r.ok, n: r.steps.size()])
   // also on disk: the bridge may drop the WebSocket during a world reload while the script keeps running (seen at
-  // 1 fps); the runner then recovers the result from this file
-  new File(new File('qa-runs'), spState.runId + '.report.json').setText(spJson(spPlain(r)), 'UTF-8')
+  // 1 fps). Written to a temp file, then renamed (atomic on one filesystem); the runner reads ONLY <runId>.report.json
+  // and checks nonce + scenario.
+  def dir = new File('qa-runs'); dir.mkdirs()
+  def tmp = new File(dir, spState.runId + '.report.json.tmp')
+  tmp.setText(spJson(spPlain(r)), 'UTF-8')
+  java.nio.file.Files.move(tmp.toPath(), new File(dir, spState.runId + '.report.json').toPath(),
+                           java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
   return spPlain(r)
 }
 
@@ -95,7 +113,8 @@ spScreen = { -> def s = mc.gui.screen(); s == null ? null : java.typeName(s).tok
 spWorldId = { ->  // folder name of the open singleplayer world, or null
   def srv = mc.getSingleplayerServer()
   if (srv == null) return null
-  try { return srv.storageSource.getLevelId() } catch (Throwable e) { return srv.getWorldData().getLevelName() }
+  // fail closed: the display name is user-settable (could read "sp-test..."), so never fall back to it
+  try { return srv.storageSource.getLevelId() } catch (Throwable e) { return null }
 }
 
 spInfo = { ->
@@ -167,7 +186,10 @@ spEnsureInGame = { long timeoutMs = 10000 ->  // 10 s: a respawn takes ~6 s at 1
     def s = sync {
       mc.options.pauseOnLostFocus = false
       def sc = mc.gui.screen()
-      if (sc != null && mc.level != null && java.typeName(sc).endsWith('DeathScreen')) { closed << 'DeathScreen(respawn)'; mc.player.respawn(); mc.gui.setScreen(null) }
+      def wid = spWorldId()
+      boolean testWorld = wid != null && wid.startsWith('sp-test')
+      if (sc != null && mc.level != null && java.typeName(sc).endsWith('DeathScreen') && !testWorld) { closed << 'DeathScreen(left open: not a test world)' }
+      else if (sc != null && mc.level != null && java.typeName(sc).endsWith('DeathScreen')) { closed << 'DeathScreen(respawn)'; mc.player.respawn(); mc.gui.setScreen(null) }
       else if (sc != null && mc.level != null && !(spScreen() in ['LevelLoadingScreen', 'ReceivingLevelScreen', 'ProgressScreen', 'GenericMessageScreen'])) {
         closed << java.typeName(sc).tokenize('.').last(); sc.onClose() }  // loading screens are waited for, never closed
       spScreen()
@@ -385,13 +407,13 @@ spCmdsHeader = { String path ->
 
 spRunCmds = { String path, Map o = [:] ->
   def needs = spCmdsHeader(path)
+  if (!needs) return [ok: false, why: "missing '# needs:' header (test-world | in-world)"]
   if ('test-world' in needs) { def e = spEnsureInWorld(o.world ?: 'sp-test-flat'); if (!e.ok) return e + [why: 'needs test-world'] }
   else if (sync { mc.player == null }) return [ok: false, why: 'not in a world']
-  else spEnsureInGame()
+  spGuard("runCmds ${new File(path).name}")   // before anything that touches the game (spEnsureInGame may respawn)
+  if (!('test-world' in needs)) spEnsureInGame()
   int n = 0
   def failed = null
-  if (!needs) return [ok: false, why: "missing '# needs:' header (test-world | in-world)"]
-  spGuard("runCmds ${new File(path).name}")
   new File(path).readLines('UTF-8').eachWithIndex { raw, i ->
     def l = raw.trim()
     if (!l) return
@@ -468,7 +490,8 @@ spKillEntities = { String typeOrSelector ->
   def sel = typeOrSelector.startsWith('@') ? typeOrSelector :
             (typeOrSelector ==~ /[0-9a-f-]{36}/ ? typeOrSelector :
              "@e[type=${typeOrSelector.contains(':') ? typeOrSelector : 'minecraft:' + typeOrSelector},distance=..64]")
-  if (sel.startsWith('@') && !(sel =~ /type=/)) throw new IllegalArgumentException("spKillEntities: selector without type= would kill the player: ${sel}".toString())
+  if (sel.startsWith('@') && (!(sel =~ /type=/) || ((sel =~ /type=!/) && !(sel =~ /type=!(minecraft:)?player\b/))))
+    throw new IllegalArgumentException("spKillEntities: selector can hit the player (needs a positive type= or type=!minecraft:player): ${sel}".toString())
   return spCommand("kill ${sel}") + [selector: sel]
 }
 
@@ -477,6 +500,7 @@ spKeys = [forward: 'keyUp', back: 'keyDown', left: 'keyLeft', right: 'keyRight',
 
 spHold = { String key, long ms ->
   def k = spKeys[key] ?: key
+  if (!(k in ['keyUp', 'keyDown', 'keyLeft', 'keyRight', 'keyJump', 'keyShift', 'keySprint'])) spGuard("hold ${k}")  // attack/use/drop... change the world
   def p0 = sync { [mc.player.getX(), mc.player.getY(), mc.player.getZ()] }
   double maxDy = 0
   long t0 = System.currentTimeMillis()
