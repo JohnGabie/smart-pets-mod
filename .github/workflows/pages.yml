@@ -1,8 +1,11 @@
-# Deploys the static site in `site/` to GitHub Pages. Manual trigger only.
-# NOTE: GitHub Pages needs a PUBLIC repository on the free plan; this will fail on a private one.
+# Deploys the static site in `site/` to GitHub Pages on every push to main that touches `site/`, or manually.
+# NOTE: GitHub Pages needs a PUBLIC repository on the free plan.
 name: Deploy site to GitHub Pages
 
 on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
