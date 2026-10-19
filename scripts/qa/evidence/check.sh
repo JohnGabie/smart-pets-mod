@@ -8,14 +8,18 @@ else data="${EVIDENCE_DIR:-$root/.evidence}/data.js"; base="$(dirname "$data")";
 command -v node >/dev/null || { echo "node not found" >&2; exit 2; }
 [ -f "$data" ] || { echo "ERROR: $data not found. See scripts/qa/evidence/README.md" >&2; exit 1; }
 exec node - "$data" "$base" <<'JS'
-const fs=require('fs'),path=require('path'),vm=require('vm');
+const fs=require('fs'),path=require('path');
 const [data,base]=process.argv.slice(2);
 const errs=[],warns=[];
-const win={};
-try{vm.runInNewContext(fs.readFileSync(data,'utf8'),{window:win},{timeout:2000});}
-catch(e){console.error('ERROR: data.js failed to load: '+e.message);process.exit(1);}
-const L=win.EVIDENCE;
-if(!Array.isArray(L)){console.error('ERROR: window.EVIDENCE is not an array');process.exit(1);}
+// data.js is NEVER executed: it must be exactly `window.EVIDENCE = <strict JSON array>;`
+const src=fs.readFileSync(data,'utf8').replace(/^\uFEFF/,'');
+const m=/^window\.EVIDENCE\s*=\s*(\[[\s\S]*\])\s*;\s*$/.exec(src);
+if(!m){console.error('ERROR: data.js must be exactly `window.EVIDENCE = <JSON array>;` (strict JSON, no comments, no JS code)');process.exit(1);}
+let L;
+try{L=JSON.parse(m[1]);}
+catch(e){console.error('ERROR: data.js is not strict JSON: '+e.message);process.exit(1);}
+if(!Array.isArray(L)){console.error('ERROR: EVIDENCE is not an array');process.exit(1);}
+let realBase;try{realBase=fs.realpathSync(base);}catch(e){realBase=path.resolve(base);}
 const KIND=['info','unexpected'],ST=['open','seen','decided','fixed'],MT=['image','video'];
 const isS=v=>typeof v==='string'&&v.trim()!=='';
 const safe=p=>typeof p==='string'&&/^[A-Za-z0-9._\- \/]+$/.test(p)&&!p.startsWith('/')&&!p.includes('//')&&p.split('/').every(s=>s!==''&&s!=='.'&&s!=='..');
@@ -36,7 +40,9 @@ L.forEach((r,i)=>{
   if(!isS(m.caption))errs.push(x+'missing caption');
   if(!safe(m.path))return errs.push(x+'unsafe or missing path '+JSON.stringify(m.path));
   const f=path.join(base,m.path);
-  if(!fs.existsSync(f)||!fs.statSync(f).isFile())errs.push(x+'file not found: '+m.path);});
+  let rp;try{rp=fs.realpathSync(f);}catch(e){return errs.push(x+'file not found: '+m.path);}
+  if(!fs.statSync(rp).isFile())return errs.push(x+'not a regular file: '+m.path);
+  if(rp!==realBase&&!rp.startsWith(realBase+path.sep))errs.push(x+'resolves outside the evidence folder (symlink?): '+m.path);});
  if('kind' in r&&!KIND.includes(r.kind))e('bad kind '+JSON.stringify(r.kind));
  if('status' in r&&!ST.includes(r.status))e('bad status '+JSON.stringify(r.status));
  if(r.kind==='unexpected'&&!r.reproduction)warns.push(w+': unexpected finding without reproduction');

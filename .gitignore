@@ -35,3 +35,4 @@ Thumbs.db
 
 # Evidence bank (local, agent-written data; viewer is read-only)
 .evidence/
+.playwright-mcp/
