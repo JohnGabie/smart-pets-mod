@@ -121,3 +121,4 @@ Evidence journal. One entry per verified fact or surprise: date, versions that w
 - dev-client.sh, stand-ins: every signal now re-checks the process start time, and `stop` takes the lock. Leader dead before `wait` with a dev game running: exit 2 and pidfile kept (case C). Cases A/B stopped the recorded game, and the maintainer's client stayed foreign. A real start/stop and the cause of the 1 fps WebSocket drop are still UNVERIFIED.
 
 - Evidence bank: read-only viewer + validator in `scripts/qa/evidence/` (data in git-ignored `.evidence/data.js`, written only by agents); checked in Chromium over http and Chrome over file:// with the fictional example data only.
+- dev-client.sh start/wait/stop VERIFIED with a real game (2026-10-19), visible and headless; smoke-world 1/1 each; clean exit (no process/port/pidfile; vsync true). Still stand-in only: exit-2 path, PID-reuse races.
