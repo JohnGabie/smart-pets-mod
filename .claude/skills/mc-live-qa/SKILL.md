@@ -16,6 +16,8 @@ Thin entry point. The durable tools are repo scripts, so any agent or model can 
   game (mechanics tested with stand-ins only), so use it only while the human is watching until it has been run
   once. Otherwise use read-only calls only (`bridge.py status|snapshot|screenshot|raw chatHistory`).
 - Never quit, leave or join on a client you did not start. `dev-client.sh stop` refuses anything it did not start.
+- Lint is a safety net, not a sandbox: do not work around it. Flags (`SP_FAST`, `SP_ALLOW_ANY_WORLD`) apply to one
+  `bridge.py exec` call only and are reset afterwards.
 - World guard: every world-changing helper refuses unless the open world is `sp-test*`.
   `SP_ALLOW_ANY_WORLD=1` overrides it and is logged. Only use it if the human asks.
   One game instance at a time (7 GB RAM): no second client and no GameTest run while a client is up.

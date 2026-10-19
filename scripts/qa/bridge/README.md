@@ -33,12 +33,24 @@ Exit codes. bridge.py: 0 ok, 1 result `ok:false`, 2 bridge/script error, 3 no br
 dev-client.sh: 0 ok, 1 refused, 2 failed, 4 timeout, 64 usage.
 
 ## Safety and speed switches
+- Lint (`lint-scenario.py`, also run by `bridge.py exec`) is a SAFETY NET for honest agents, not a sandbox. Groovy can
+  reach anything the bridge exposes. The real protection is the library guard plus the human ownership rules.
+- Flags are per call: `bridge.py exec` sets `SP_FAST` / `SP_ALLOW_ANY_WORLD` from THIS call's environment (default
+  false), runs the code inside a closure, and resets both in a `finally` (plus `spRestoreDisplay()` when `SP_FAST=1`).
+  A plain MCP `evaluate(new File(sp-lib.groovy))` always loads with both false. `spReport()` and the runner's exit trap
+  reset them too. Consequence: no `import` lines in exec code (use fully-qualified names or `java.type`).
+- Runs are identified by a unique runId (timestamp + scenario + run + random hex + runner pid) and a nonce. The report
+  is written to a temp file and atomically renamed to `qa-runs/<runId>.report.json`. On a dropped connection the
+  runner reads ONLY that file and `bridge.py check-report` requires the same nonce and scenario.
 - World guard: every world-changing helper (`spCommand` and everything built on it, `spBreak`, `spPlace`, `spClick`)
   throws `SP_GUARD` unless the open world folder starts with `sp-test`. `SP_ALLOW_ANY_WORLD=1` in the environment of
   bridge.py/the runner lifts it, and every use is logged (`guardOverride`). `spKillEntities('@e...')` without `type=` is refused.
 - Setup failures: `spCommand` reads the chat feedback of each command. A red message is FAILED, except known no-ops
   (`fill`/`setblock` changed nothing, difficulty already set, clear found nothing, data unchanged, and for `kill` only:
   no entity found). `spRunCmds` stops at the first FAILED line, and the runner fails the run with the line and feedback.
+  Limits, not fixed: at about 1 fps, feedback that arrives late can be attributed to the NEXT command, and NO_FEEDBACK
+  (nothing within 1.5 s) counts as ok. The classifier catches typos and rejected commands; the scenario's assertions
+  are what prove the setup happened.
 - Speed: `SP_FAST=1` turns vsync off IN MEMORY (about 33 ms per `sync{}` hop instead of about 1000 ms on an unfocused
   window). Default is off (smoke about 2.5 min instead of about 10 s). The originals of vsync and pauseOnLostFocus are
   recorded at the first change, and `spRestoreDisplay()` restores both and saves options.txt. The runner always calls it
@@ -96,4 +108,5 @@ results quoted in `MODLOG.md` (2026-10-19 entry). Raw logs are in `mod/run/qa-ru
 | `spInvCount/spBlockId/spBlockPos` | VERIFIED | used above |
 | `dev-client.sh status/stop refusal/start refusal/wait` | VERIFIED | start refuses while any Minecraft JVM is up (exit 1); stop with no own client: REFUSED exit 1 |
 | `dev-client.sh start/stop` of a real client | UNVERIFIED | mechanics verified with stand-ins in a scratch copy: setsid leader writes its own pid, `wait` records the game JVM (found by ppid ancestry), stop after the leader died still stopped the recorded game, a TERM-ignoring game got KILL, the maintainer's real client was classed foreign (no `quit` sent, still running). The exit-2 "still running" path was not provoked. A real game launch was not run (one instance at a time) |
-| `run-bridge-scenario.sh` | VERIFIED | `--repeat 3` 3/3 (SP_FAST=1, 32 s) and default mode 1/1 (2.5 min, recovered after a dropped connection); bad setup line fails the run at line 6; restore trap output in `restore.json` |
+| `run-bridge-scenario.sh` (round 2) | VERIFIED | `SP_FAST=1 --repeat 3` 3/3; default mode 1/1 recovered from its own `<runId>.report.json` after a dropped connection while 3 planted stale `ok:false` reports (`*-smoke-world-r1*`, `*-world-r1*`, future mtime) were ignored; afterwards a plain exec showed fast=false, allowAnyWorld=false, vsync true |
+| `run-bridge-scenario.sh` (round 1) | VERIFIED | `--repeat 3` 3/3 (SP_FAST=1, 32 s) and default mode 1/1 (2.5 min, recovered after a dropped connection); bad setup line fails the run at line 6; restore trap output in `restore.json` |

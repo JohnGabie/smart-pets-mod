@@ -22,5 +22,7 @@
 | `SP_GUARD: refusing ... in world 'X'` | the open world is not `sp-test*` | `spEnsureInWorld('sp-test-flat')` / `# needs: test-world`; override only on the human's request (`SP_ALLOW_ANY_WORLD=1`, logged) |
 | `connection closed by bridge` mid-run, most often during close/reopen at ~1 fps | the bridge drops the WebSocket around a world reload; the script keeps running | the runner waits for `qa-runs/<runId>.report.json` (`recovered`); or run with `SP_FAST=1` |
 | Player dies in a survival scenario (DeathScreen) | a monster had time to attack (slow mode) | kill or move monsters before `gamemode survival`; `spEnsureInGame` respawns |
+| A setup line passes but the assertion shows it did not happen | at ~1 fps late feedback can be attributed to the next command; NO_FEEDBACK counts as ok | trust the assertions; add an assertion for every setup effect that matters |
+| `exec` fails to compile with an `import` line | exec code is wrapped in a closure (per-call flag reset) | use fully-qualified names or `java.type('...')` |
 | Script dies near 5 s | per-call `timeoutMs` missing (bridge.py default is 10 s; MCP default is 10 s) | pass `--timeout`/`timeoutMs` (max 300000); the debugbridge.json 5000 does not cap it |
 | Relative `~` coordinates are off by one in Y | commands run at the server-side player position (feet block) | read the position with `spBlockPos()` after setup; assert on entities/blocks found, not on exact Y |
