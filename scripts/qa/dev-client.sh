@@ -125,6 +125,7 @@ cmd_stop() {
     grace=60
     python3 - "$BRIDGE" <<'PY' || true
 import importlib.util, sys
+sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("bridge", sys.argv[1]); b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
 br = b.Bridge(); print("quit:", br.request("quit", {}, timeout_s=10).get("success")); br.close()
 PY

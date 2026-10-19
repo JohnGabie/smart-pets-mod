@@ -34,6 +34,7 @@ import struct
 import sys
 import time
 
+sys.dont_write_bytecode = True  # importing lint-scenario.py must not leave __pycache__ in the repo
 HERE = os.path.dirname(os.path.abspath(__file__))
 LIB = os.path.join(HERE, "sp-lib.groovy")
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
