@@ -2,19 +2,21 @@
 """Static checks for live-QA scenarios (python3 stdlib only).
 
 usage: lint-scenario.py FILE [FILE...]     (*.groovy assertions, *.cmds vanilla command setup)
+       lint-scenario.py --snippet FILE        (ad-hoc exec code: safety rules only; used by bridge.py exec)
 exit 0 = clean, 1 = errors found, 64 = usage. Prints one line per finding: path:line: LEVEL message.
 
 .groovy rules: `// timeoutMs: N` header (1000..300000); no sleep/wait inside sync{}; no quit/leave/join/stop/
 process/exit APIs; no library re-load (the runner loads it); no forced window focus; no raw tp/teleport through
 spCommand (use spTeleportSetup, which logs SETUP_TELEPORT); must `return spReport()`.
-.cmds rules: header `# scenario:` and `# purpose:`; `# needs:` values known; `# wait N ticks|ms` well formed;
-no server-admin/destructive commands.
+.cmds rules: headers `# scenario:`, `# purpose:`, `# needs:` (required; test-world | in-world);
+`# wait N ticks|ms` well formed; no server-admin/destructive commands, also after `execute ... run`;
+no kill selector that can hit the player (bare @e, @a, @s, @p); fill volume <= 32768 when computable.
 """
 import re
 import sys
 
 FORBIDDEN_GROOVY = [
-    (r"\bmc_quit_client\b|\.quit\s*\(|\bmc\.stop\s*\(|\.destroy\s*\(", "quits/stops the client"),
+    (r"\bmc_quit_client\b|\.quit\s*\(|\.stop\s*\(\s*\)|\bmc\.close\s*\(|getInstance\s*\(\s*\)\s*\.\s*(stop|close)|\.destroy\s*\(", "quits/stops the client"),
     (r"\bleaveServer\b|\bmc_leave_server\b|\bjoinServer\b|\bmc_join_server\b", "leaves/joins a server"),
     (r"\.disconnect\s*\(|disconnectFromWorld|disconnectWithSavingScreen", "raw disconnect: use spCloseWorld()"),
     (r"\bRuntime\b|\bProcessBuilder\b|System\.exit|java\.net\.", "process/network/exit API"),
@@ -23,6 +25,8 @@ FORBIDDEN_GROOVY = [
     (r"window\.focused|fabric_focus|grabMouse\s*\(", "forces window focus/mouse grab (headless Xvfb only, not in scenarios)"),
     (r"pauseOnLostFocus\s*=\s*true", "re-enables the pause-on-lost-focus loop"),
     (r"deleteDir\s*\(|Files\.delete|\.delete\s*\(\s*\)", "deletes files"),
+    (r"\.text\s*=[^=]|\.write\s*\(|withWriter|newWriter|Files\.write|<<\s*new\s+File|new\s+File\([^)]*\)\s*<<", "writes files (only the library logs)"),
+    (r"SP_ALLOW_ANY_WORLD\s*=|spWorldId\s*=|spGuard\s*=", "tampers with the world guard (use the env override, which is logged)"),
     (r"options\.save\s*\(", "persists the maintainer's options.txt"),
 ]
 FORBIDDEN_CMDS = {"stop", "kick", "ban", "ban-ip", "pardon", "pardon-ip", "op", "deop", "whitelist", "publish",
@@ -86,6 +90,52 @@ def lint_groovy(path, src):
     return errs
 
 
+def lint_snippet(src):
+    """Safety rules only (no header/report requirements): for ad-hoc `bridge.py exec` code."""
+    errs = []
+    line = lambda off: src.count("\n", 0, off) + 1
+    code = strip_strings_comments(src)
+    for a, b in sync_bodies(code):
+        for s_ in SLEEPY.finditer(code, a, b):
+            errs.append((line(s_.start()), "ERROR", "`%s` inside sync{}: waits/commands must run outside sync" % s_.group(0)))
+    for rx, why in FORBIDDEN_GROOVY:
+        for s_ in re.finditer(rx, code):
+            errs.append((line(s_.start()), "ERROR", "forbidden (%s): %s" % (why, s_.group(0))))
+    return errs
+
+
+def coord(tok):
+    """Return (kind, value) for an absolute or ~relative coordinate, None for ^local or unparsable."""
+    m = re.fullmatch(r"(~?)(-?\d+(?:\.\d+)?)?", tok)
+    if not m or (not m.group(1) and m.group(2) is None):
+        return None
+    return (m.group(1), float(m.group(2) or 0))
+
+
+def check_command(words, i, errs):
+    word = words[0].lower() if words else ""
+    if word in FORBIDDEN_CMDS:
+        errs.append((i, "ERROR", "forbidden command `%s`" % word))
+    if word == "execute" and "run" in [w.lower() for w in words]:
+        k = [w.lower() for w in words].index("run")
+        check_command(words[k + 1:], i, errs)
+        return
+    if word in ("tp", "teleport"):
+        errs.append((i, "INFO", "teleport is SETUP only (logged); never inside a 'no teleport' check"))
+    if word == "kill":
+        sel = words[1] if len(words) > 1 else "@s"
+        if sel in ("@a", "@s", "@p", "@r") or (sel.startswith("@e") and "type=" not in sel) or sel.startswith("@a["):
+            errs.append((i, "ERROR", "kill `%s` can kill the player: use @e[type=...] (e.g. type=!minecraft:player)" % sel))
+    if word == "fill" and len(words) >= 7:
+        cs = [coord(t) for t in words[1:7]]
+        if all(cs) and all(cs[k][0] == cs[k + 3][0] for k in range(3)):
+            vol = 1
+            for k in range(3):
+                vol *= abs(cs[k + 3][1] - cs[k][1]) + 1
+            if vol > 32768:
+                errs.append((i, "ERROR", "fill volume %d > 32768 (max_block_modifications)" % vol))
+
+
 def lint_cmds(path, src):
     errs, heads = [], {}
     for i, raw in enumerate(src.splitlines(), 1):
@@ -103,12 +153,8 @@ def lint_cmds(path, src):
             elif re.match(r"#\s*wait\b", l) and not re.match(r"#\s*wait\s+\d+\s*(ticks?|ms)\s*$", l):
                 errs.append((i, "ERROR", "bad wait directive (use `# wait N ticks` or `# wait N ms`)"))
             continue
-        word = l.lstrip("/").split()[0].lower()
-        if word in FORBIDDEN_CMDS:
-            errs.append((i, "ERROR", "forbidden command `%s`" % word))
-        if word in ("tp", "teleport"):
-            errs.append((i, "INFO", "teleport is SETUP only (logged); never inside a 'no teleport' check"))
-    for h in ("scenario", "purpose"):
+        check_command(l.lstrip("/").split(), i, errs)
+    for h in ("scenario", "purpose", "needs"):
         if h not in heads:
             errs.append((1, "ERROR", "missing header `# %s: ...`" % h))
     return errs
@@ -118,6 +164,12 @@ def main(argv):
     if not argv:
         print(__doc__.strip().splitlines()[2], file=sys.stderr)
         return 64
+    if argv[0] == "--snippet":
+        bad = 0
+        for p in argv[1:]:
+            for ln, lvl, msg in lint_snippet(open(p, encoding="utf-8").read()):
+                print("%s:%d: %s %s" % (p, ln, lvl, msg)); bad += 1
+        return 1 if bad else 0
     bad = 0
     for p in argv:
         src = open(p, encoding="utf-8").read()

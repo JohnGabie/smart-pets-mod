@@ -14,12 +14,17 @@ spLibVersion = '1'
 if (!binding.hasVariable('spState') || spState == null) {
   spState = [runId: null, steps: [], setup: [], arena: null, t0: System.currentTimeMillis()]
 }
+// Original values of every client option this library changes, recorded at the FIRST change in this client
+// session (kept across spBegin and library reloads). spRestoreDisplay() puts them all back.
+if (!binding.hasVariable('spOrig') || spOrig == null) spOrig = [:]
+if (!binding.hasVariable('SP_FAST')) SP_FAST = false                       // bridge.py --lib sets these from env
+if (!binding.hasVariable('SP_ALLOW_ANY_WORLD')) SP_ALLOW_ANY_WORLD = false
 
 spStamp = { -> java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern('yyyyMMdd-HHmmss')) }  // Groovy 5: no Date.format
 
 spBegin = { String name = 'run' ->
   def ts = spStamp()
-  spState = [runId: "${ts}-${name}".toString(), steps: [], setup: [], arena: spState?.arena, prevVsync: spState?.prevVsync, t0: System.currentTimeMillis()]
+  spState = [runId: "${ts}-${name}".toString(), steps: [], setup: [], setupFailures: [], arena: spState?.arena, t0: System.currentTimeMillis()]
   def dir = new File('qa-runs'); dir.mkdirs()
   spLog('begin', [name: name, display: spFast()])
   return [runId: spState.runId, log: new File(dir, spState.runId + '.jsonl').canonicalPath]
@@ -74,6 +79,9 @@ spReport = { ->
   def r = [ok: !spState.steps.isEmpty() && spState.steps.every { it.ok }, runId: spState.runId,
            ms: System.currentTimeMillis() - spState.t0, setup: spState.setup, steps: spState.steps]
   spLog('report', [ok: r.ok, n: r.steps.size()])
+  // also on disk: the bridge may drop the WebSocket during a world reload while the script keeps running (seen at
+  // 1 fps); the runner then recovers the result from this file
+  new File(new File('qa-runs'), spState.runId + '.report.json').setText(spJson(spPlain(r)), 'UTF-8')
   return spPlain(r)
 }
 
@@ -119,35 +127,49 @@ spWaitUntil = { Closure cond, long timeoutMs = 5000, long pollMs = 100 ->
 // ---------- screens / menus ----------
 // Frame pacing: every sync{} hop waits for the next frame. With vsync ON and the window unfocused/occluded the
 // compositor delivers ~1 fps (measured: 1000 ms per hop); the AFK limiter (options.inactivityFpsLimit=afk) also
-// throttles after 60 s without input. spFast() turns vsync off IN MEMORY (remembering the old value) and resets the
-// AFK timer: measured 33 ms per hop at framerateLimit 30. spRestoreDisplay() puts vsync back (and saves options.txt).
-// CAUTION: while vsync is off the game may persist enableVsync:false to options.txt (observed): always restore at the end.
+// throttles after 60 s without input. spFast() is OPT-IN (SP_FAST=1 in the environment of bridge.py/the runner):
+// it turns vsync off IN MEMORY (original recorded in spOrig) and resets the AFK timer: measured 33 ms per hop at
+// framerateLimit 30. Without opt-in it only resets the AFK timer (in memory, nothing persisted).
+// CAUTION: while vsync is off the game may persist enableVsync:false to options.txt (observed). The runner always
+// calls spRestoreDisplay() at exit.
+spRemember = { String key, value -> if (!spOrig.containsKey(key)) spOrig[key] = value }
 spFast = { ->
   def r = sync {
-    if (spState.prevVsync == null) spState.prevVsync = mc.options.enableVsync().get()
-    if (mc.options.enableVsync().get()) mc.options.enableVsync().set(false)
     mc.getFramerateLimitTracker().onInputReceived()
-    [vsync: mc.options.enableVsync().get(), prevVsync: spState.prevVsync]
+    if (SP_FAST) { spRemember('enableVsync', mc.options.enableVsync().get()); if (mc.options.enableVsync().get()) mc.options.enableVsync().set(false) }
+    [fast: SP_FAST as boolean, vsync: mc.options.enableVsync().get()]
   }
   return r
 }
 spRestoreDisplay = { ->
-  // the game itself may write options.txt while vsync is off (observed), so restore AND save explicitly
-  def r = sync { if (spState.prevVsync != null) { mc.options.enableVsync().set(spState.prevVsync); mc.options.save() }; [vsync: mc.options.enableVsync().get()] }
-  spState.prevVsync = null
+  // Restore every recorded original (vsync, pauseOnLostFocus), then save so options.txt holds the originals again
+  // (the game may already have persisted the changed values). Nothing recorded = nothing touched, no save.
+  def restored = [:]
+  def r = sync {
+    spOrig.each { k, v ->
+      if (k == 'enableVsync') { mc.options.enableVsync().set(v); restored[k] = v }
+      if (k == 'pauseOnLostFocus') { mc.options.pauseOnLostFocus = v; restored[k] = v }
+    }
+    if (restored) mc.options.save()
+    [restored: restored, saved: !restored.isEmpty(), vsync: mc.options.enableVsync().get(), pauseOnLostFocus: mc.options.pauseOnLostFocus]
+  }
+  spOrig = [:]
   spLog('restoreDisplay', r); return r
 }
 
 // Snippet A of the plan: remove the cause (pauseOnLostFocus + unfocused window), then onClose() the open screen.
-spEnsureInGame = { long timeoutMs = 3000 ->
+spEnsureInGame = { long timeoutMs = 10000 ->  // 10 s: a respawn takes ~6 s at 1 fps
   long t0 = System.currentTimeMillis()
   def closed = []
   spFast()
+  sync { spRemember('pauseOnLostFocus', mc.options.pauseOnLostFocus) }
   while (System.currentTimeMillis() - t0 < timeoutMs) {
     def s = sync {
       mc.options.pauseOnLostFocus = false
       def sc = mc.gui.screen()
-      if (sc != null && mc.level != null) { closed << java.typeName(sc).tokenize('.').last(); sc.onClose() }
+      if (sc != null && mc.level != null && java.typeName(sc).endsWith('DeathScreen')) { closed << 'DeathScreen(respawn)'; mc.player.respawn(); mc.gui.setScreen(null) }
+      else if (sc != null && mc.level != null && !(spScreen() in ['LevelLoadingScreen', 'ReceivingLevelScreen', 'ProgressScreen', 'GenericMessageScreen'])) {
+        closed << java.typeName(sc).tokenize('.').last(); sc.onClose() }  // loading screens are waited for, never closed
       spScreen()
     }
     if (s == null) {
@@ -210,6 +232,7 @@ spOpenWorld = { String name, long timeoutMs = 60000 ->
 // (NOT createTestWorldDimensions/FLAT_ALL_DIMENSIONS: not stable, so every reopen shows BackupConfirmScreen)
 // no bonus chest, cheats on. Route: WorldOpenFlows#createFreshLevel (same call as SelectWorldScreen's DEBUG button).
 spCreateTestWorld = { String name = 'sp-test-flat', Map o = [:] ->
+  if (!(name ==~ /sp-test[A-Za-z0-9_-]*/)) { def r = [ok: false, why: "test world name must match sp-test[A-Za-z0-9_-]*: ${name}".toString()]; spLog('createTestWorld', r); return r }
   if (name in spWorlds().worlds) { def r = [ok: true, exists: true, world: name]; spLog('createTestWorld', r); return r }
   if (sync { mc.level != null }) { def c = spCloseWorld(); if (!c.ok) return c }
   // a previous aborted create leaves <saves>/<name>/ with only session.lock + empty datapacks/: remove only that shape
@@ -249,14 +272,58 @@ spEnsureInWorld = { String name = 'sp-test-flat', Map o = [:] ->
   return (name in spWorlds().worlds) ? spOpenWorld(name) : spCreateTestWorld(name, o)
 }
 
+// ---------- world guard ----------
+// Every helper that changes the world (commands, break, place, container clicks) refuses unless the open world is
+// a disposable test world (folder name starts with 'sp-test'). Override: SP_ALLOW_ANY_WORLD=1 (logged).
+spGuard = { String action ->
+  def w = sync { spWorldId() }
+  if (w != null && w.startsWith('sp-test')) return w
+  if (SP_ALLOW_ANY_WORLD) { spLog('guardOverride', [action: action, world: w]); return w }
+  spLog('guardRefused', [action: action, world: w])
+  throw new IllegalStateException("SP_GUARD: refusing '${action}' in world '${w}': only sp-test* worlds (override SP_ALLOW_ANY_WORLD=1, logged)".toString())
+}
+
 // ---------- commands (setup) ----------
-spCommand = { String cmd, String kind = 'SETUP', long settleMs = 250 ->
+// Failure detection: command feedback arrives as chat messages. A RED message is a failure, except the no-op keys
+// below (the command was valid but changed nothing, e.g. re-filling the same blocks). Status: OK | NOOP | FAILED |
+// NO_FEEDBACK (nothing within 1.5 s, e.g. send_command_feedback false).
+spNoopKeys = ['commands.fill.failed', 'commands.setblock.failed', 'commands.difficulty.failure',
+              'clear.failed.single', 'clear.failed.multiple', 'commands.data.merge.failed']  // valid command, nothing changed
+// "no entity found" is a no-op ONLY for kill (nothing to remove); for data/item/tp it means the setup missed its target
+spNoopKeysFor = { String c -> c.startsWith('kill ') ? spNoopKeys + ['argument.entity.notfound.entity'] : spNoopKeys }
+spChatHead = { chat -> def l = java.list(chat.allMessages); l.isEmpty() ? null : [l[0].addedTime(), l[0].content().getString()] }
+spChatSince = { chat, head ->
+  def out = []
+  for (m in java.list(chat.allMessages)) {
+    if (head != null && m.addedTime() == head[0] && m.content().getString() == head[1]) break
+    def keys = []; boolean red = false
+    def walk; walk = { x -> def ct = x.getContents(); if (java.typeName(ct).endsWith('TranslatableContents')) keys << ct.getKey()
+      def col = x.getStyle().getColor(); if (col != null && col.toString() == 'red') red = true; java.list(x.getSiblings()).each { walk(it) } }
+    walk(m.content())
+    out << [text: m.content().getString().take(160), keys: keys, red: red]
+  }
+  return out.reverse()
+}
+spCommand = { String cmd, String kind = 'SETUP', long settleMs = 0 ->
   def c = cmd.startsWith('/') ? cmd.substring(1) : cmd
-  sync { mc.player.connection.sendCommand(c) }  // ClientPacketListener#sendCommand, no leading slash
+  spGuard("command: ${c}")
+  def chat = sync { mc.gui.hud.getChat() }
+  def head = sync { def h = spChatHead(chat); mc.player.connection.sendCommand(c); h }  // ClientPacketListener#sendCommand, no slash
   spState.setup << c
-  spLog('command', [kind: kind, cmd: c])
-  if (settleMs > 0) Thread.sleep(settleMs)  // the integrated server runs the command on its own thread
-  return [ok: true, cmd: c, kind: kind]
+  long t0 = System.currentTimeMillis(); def msgs = []
+  while (System.currentTimeMillis() - t0 < 1500) {
+    Thread.sleep(50)
+    msgs = sync { spChatSince(chat, head) }
+    if (msgs) { Thread.sleep(50); msgs = sync { spChatSince(chat, head) }; break }
+  }
+  long left = settleMs - (System.currentTimeMillis() - t0); if (left > 0) Thread.sleep(left)
+  def noop = spNoopKeysFor(c)
+  def bad = msgs.findAll { it.red && !(it.keys.any { k -> k in noop }) }
+  def status = bad ? 'FAILED' : (msgs.any { it.red } ? 'NOOP' : (msgs ? 'OK' : 'NO_FEEDBACK'))
+  def r = [ok: status != 'FAILED', cmd: c, kind: kind, status: status, feedback: msgs*.text.take(3)]
+  if (status == 'FAILED') spState.setupFailures << r
+  spLog('command', r)
+  return r
 }
 
 spTime = { v -> spCommand("time set ${v}") }                       // 'day'|'night'|'noon'|'midnight'|ticks
@@ -270,7 +337,8 @@ spSetBlock = { int x, int y, int z, String block -> spCommand("setblock ${x} ${y
 spFill = { int x1, int y1, int z1, int x2, int y2, int z2, String block, String mode = '' -> spCommand("fill ${x1} ${y1} ${z1} ${x2} ${y2} ${z2} ${block} ${mode}".trim()) }
 
 spGamemode = { String m ->
-  spCommand("gamemode ${m}", 'SETUP', 0)
+  def c = spCommand("gamemode ${m}", 'SETUP', 0)
+  if (!c.ok) return c
   def w = spWaitUntil({ mc.gameMode?.getPlayerMode()?.toString() == m.toUpperCase() }, 3000, 100)
   def r = [ok: w.ok, gamemode: sync { mc.gameMode?.getPlayerMode()?.toString() }]
   spLog('gamemode', r); return r
@@ -280,16 +348,17 @@ spBlockPos = { -> sync { def p = mc.player; [x: Math.floor(p.getX()) as int, y: 
 
 // Clean flat arena centred on the player: floor of `material` at feet-1, air above (h blocks), optional glass ring.
 spArena = { int size = 8, String material = 'minecraft:smooth_stone', Map o = [:] ->
+  def results = []
   def c = spBlockPos(); int h = (o.height ?: 5) as int; int r = size
-  spFill(c.x - r, c.y - 1, c.z - r, c.x + r, c.y - 1, c.z + r, material)
-  spFill(c.x - r, c.y, c.z - r, c.x + r, c.y + h, c.z + r, 'minecraft:air')
+  results << spFill(c.x - r, c.y - 1, c.z - r, c.x + r, c.y - 1, c.z + r, material)
+  results << spFill(c.x - r, c.y, c.z - r, c.x + r, c.y + h, c.z + r, 'minecraft:air')
   if (o.walls != false) {
-    spFill(c.x - r - 1, c.y, c.z - r - 1, c.x + r + 1, c.y + 1, c.z + r + 1, 'minecraft:glass', 'hollow')
-    spFill(c.x - r, c.y, c.z - r, c.x + r, c.y + 1, c.z + r, 'minecraft:air')  // re-hollow the inside (hollow also fills top/bottom)
-    spFill(c.x - r - 1, c.y - 1, c.z - r - 1, c.x + r + 1, c.y - 1, c.z + r + 1, material, 'keep')
+    results << spFill(c.x - r - 1, c.y, c.z - r - 1, c.x + r + 1, c.y + 1, c.z + r + 1, 'minecraft:glass', 'hollow')
+    results << spFill(c.x - r, c.y, c.z - r, c.x + r, c.y + 1, c.z + r, 'minecraft:air')  // re-hollow the inside (hollow also fills top/bottom)
+    results << spFill(c.x - r - 1, c.y - 1, c.z - r - 1, c.x + r + 1, c.y - 1, c.z + r + 1, material, 'keep')
   }
   spState.arena = [x1: c.x - r, y1: c.y - 1, z1: c.z - r, x2: c.x + r, y2: c.y + h, z2: c.z + r, center: c]
-  def res = [ok: true, arena: spState.arena]
+  def res = [ok: results.every { it.ok }, arena: spState.arena, failed: results.findAll { !it.ok }]
   spLog('arena', res); return res
 }
 
@@ -320,15 +389,20 @@ spRunCmds = { String path, Map o = [:] ->
   else if (sync { mc.player == null }) return [ok: false, why: 'not in a world']
   else spEnsureInGame()
   int n = 0
+  def failed = null
+  if (!needs) return [ok: false, why: "missing '# needs:' header (test-world | in-world)"]
+  spGuard("runCmds ${new File(path).name}")
   new File(path).readLines('UTF-8').eachWithIndex { raw, i ->
     def l = raw.trim()
     if (!l) return
     def w = (l =~ /^#\s*wait\s+(\d+)\s*(ticks?|ms)\s*$/)
     if (w) { long v = w[0][1] as long; Thread.sleep(w[0][2].startsWith('tick') ? v * 50 : v); return }
     if (l.startsWith('#')) return
-    spCommand(l, 'SETUP', (o.delayMs ?: 100) as long); n++
+    if (failed) return
+    def c = spCommand(l, 'SETUP', (o.delayMs ?: 0) as long); n++
+    if (!c.ok) failed = c + [line: i + 1]
   }
-  def r = [ok: true, file: new File(path).name, commands: n, needs: needs]
+  def r = [ok: failed == null, file: new File(path).name, commands: n, needs: needs, failed: failed]
   spLog('runCmds', r); return r
 }
 
@@ -394,8 +468,8 @@ spKillEntities = { String typeOrSelector ->
   def sel = typeOrSelector.startsWith('@') ? typeOrSelector :
             (typeOrSelector ==~ /[0-9a-f-]{36}/ ? typeOrSelector :
              "@e[type=${typeOrSelector.contains(':') ? typeOrSelector : 'minecraft:' + typeOrSelector},distance=..64]")
-  spCommand("kill ${sel}")
-  return [ok: true, selector: sel]
+  if (sel.startsWith('@') && !(sel =~ /type=/)) throw new IllegalArgumentException("spKillEntities: selector without type= would kill the player: ${sel}".toString())
+  return spCommand("kill ${sel}") + [selector: sel]
 }
 
 // ---------- player actions ----------
@@ -403,10 +477,15 @@ spKeys = [forward: 'keyUp', back: 'keyDown', left: 'keyLeft', right: 'keyRight',
 
 spHold = { String key, long ms ->
   def k = spKeys[key] ?: key
-  def p0 = sync { [mc.player.getX(), mc.player.getZ()] }
-  try { sync { mc.options."$k".setDown(true) }; Thread.sleep(ms) } finally { sync { mc.options."$k".setDown(false) } }
-  def p1 = sync { [mc.player.getX(), mc.player.getZ()] }
-  def r = [ok: true, key: k, ms: ms, moved: Math.hypot(p1[0] - p0[0], p1[1] - p0[1])]
+  def p0 = sync { [mc.player.getX(), mc.player.getY(), mc.player.getZ()] }
+  double maxDy = 0
+  long t0 = System.currentTimeMillis()
+  try {
+    sync { mc.options."$k".setDown(true) }
+    while (System.currentTimeMillis() - t0 < ms) { Thread.sleep(50); double y = sync { mc.player.getY() }; maxDy = Math.max(maxDy, y - p0[1]) }
+  } finally { sync { mc.options."$k".setDown(false) } }
+  def p1 = sync { [mc.player.getX(), mc.player.getY(), mc.player.getZ()] }
+  def r = [ok: true, key: k, ms: ms, moved: Math.hypot(p1[0] - p0[0], p1[2] - p0[2]), maxDy: maxDy]
   spLog('hold', r); return r
 }
 
@@ -448,6 +527,7 @@ spBlockId = { int x, int y, int z -> sync {
   spT('net.minecraft.core.registries.BuiltInRegistries').BLOCK.getKey(st.getBlock()).toString() } }
 
 spBreak = { int x, int y, int z, String face = 'UP', long timeoutMs = 5000 ->
+  spGuard('break')
   def g = spEnsureInGame(); if (!g.ok) return g
   def before = spBlockId(x, y, z)
   spLookAt(x + 0.5, y + 0.5, z + 0.5)
@@ -471,6 +551,7 @@ spBreak = { int x, int y, int z, String face = 'UP', long timeoutMs = 5000 ->
 
 // Place the held block at (x,y,z) by "right-clicking" the top face of the block below it.
 spPlace = { int x, int y, int z ->
+  spGuard('place')
   def g = spEnsureInGame(); if (!g.ok) return g
   spLookAt(x + 0.5, y - 0.5, z + 0.5)
   def res = sync {
@@ -487,6 +568,7 @@ spPlace = { int x, int y, int z ->
 
 // Raw container click: MultiPlayerGameMode#handleContainerInput(containerId, slot, button, ContainerInput, player).
 spClick = { int containerId, int slot, int button = 0, String input = 'PICKUP' ->
+  spGuard('container click')
   sync { mc.gameMode.handleContainerInput(containerId, slot, button, spT('net.minecraft.world.inventory.ContainerInput').valueOf(input), mc.player) }
   def r = [ok: true, containerId: containerId, slot: slot, button: button, input: input]
   spLog('click', r); return r

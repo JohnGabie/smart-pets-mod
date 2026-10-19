@@ -4,6 +4,7 @@
 # covers: none (toolkit self-test; no product behavior yet)
 # assertions: smoke-world.groovy
 # All lines are vanilla commands run as the player (~ and @s = the player). Setup only.
+# Selectors use distance=..24 (the whole arena): at ~1 fps mobs wander between two commands.
 gamemode creative
 time set day
 weather clear
@@ -21,8 +22,8 @@ fill ~-9 ~ ~-9 ~-9 ~1 ~9 minecraft:glass
 fill ~9 ~ ~-9 ~9 ~1 ~9 minecraft:glass
 # pet stand-in: vanilla wolf tamed to the player (Owner copied from the player's UUID)
 summon minecraft:wolf ~3 ~ ~ {PersistenceRequired:1b}
-data modify entity @e[type=minecraft:wolf,distance=..6,limit=1,sort=nearest] Owner set from entity @s UUID
+data modify entity @e[type=minecraft:wolf,distance=..24,limit=1,sort=nearest] Owner set from entity @s UUID
 # monster: zombie with a helmet so it does not burn in daylight
 summon minecraft:zombie ~-4 ~ ~3 {PersistenceRequired:1b}
-item replace entity @e[type=minecraft:zombie,distance=..8,limit=1,sort=nearest] armor.head with minecraft:leather_helmet
+item replace entity @e[type=minecraft:zombie,distance=..24,limit=1,sort=nearest] armor.head with minecraft:leather_helmet
 # wait 10 ticks
