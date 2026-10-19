@@ -47,7 +47,7 @@ The same data drives the project website (`site/data/status.json`).
 
 | Phase | Scope | State |
 |---|---|---|
-| V0, Foundations | Prove the toolchain and the hardest unknowns (voice, procedural coats, custom entity/model/animation, persistence and travel) before building features. Design spec and behavior specs are done; the toolchain spike (S0) is partly verified (build, unit tests, headless in-game test with screenshot) with two checks pending the maintainer; the other spikes are planned. | In progress |
+| V0, Foundations | Prove the toolchain and the hardest unknowns (voice, procedural coats, custom entity/model/animation, persistence and travel) before building features. Design spec and behavior specs are done; the toolchain spike (S0) is verified with fallbacks (build, unit tests, headless in-game test with screenshot, Prism instance, debug bridge and `mcdev-mcp` tools; `mcmodding-mcp` does not work and video capture is untried); the other spikes are planned. | In progress |
 | V1, The Dog | Singleplayer dog: judgment, needs, genetics, training by cues, wild conquest, orphan puppies, sleep and home. | Planned |
 | V2, The Cat | Independent cats with affection, naps and warm spots. | Planned |
 | V3, Multiplayer | Bond per person, co-guardians, anti-theft rules. | Planned |

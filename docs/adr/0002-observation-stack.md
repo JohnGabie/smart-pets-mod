@@ -1,6 +1,6 @@
 # ADR-0002: Observation and QA stack for Minecraft 26.2
 
-- Status: Proposed (awaiting human approval). Partly verified: see "Verification state".
+- Status: Proposed (awaiting human approval). Verified with fallbacks (2026-10-18): see "Verification state".
 - Date: 2026-10-18
 - Spike: V0-S0 (`docs/spec/V0-SPIKES.md`)
 - Evidence: `MODLOG.md` entries dated 2026-10-18 (S0 Tasks 3 to 6)
@@ -14,7 +14,7 @@ The observation stack is, in order of trust:
 2. **Headless Fabric client GameTest under Xvfb + screenshot oracle + log grep** (primary in-game oracle; fully verified).
 3. **Dev-only debug commands + event journal** (`/smartpets debug ping`, `EventJournal` in `core`).
 4. **mcdev-mcp** (decompiled 26.2 source search) and **mcmodding-mcp** (modding docs) as MCP servers, pinned in `.mcp.json`.
-5. **DebugBridge 2.1.0 + mcdev-mcp `mc_*` tools** for live state/screenshot of a running client (installed; not yet verified, consent gate).
+5. **DebugBridge 2.1.0 + mcdev-mcp `mc_*` tools** for live state/screenshot of a running client (verified 2026-10-18 after the human accepted the consent screen).
 
 ## Verification state
 | Tool | State | Evidence |
@@ -23,9 +23,11 @@ The observation stack is, in order of trust:
 | Headless client GameTest + screenshot oracle | Works | `OK range=16..235`, exit 0; a deliberately failing test makes the runner exit 1 |
 | Dev command in game | Works | only the `SMARTPETS_DEBUG_PONG` log line was observed; without `-Dsmartpets.dev=true` the command does not exist. The journal entry the command writes is not read back by any in-game test (journal is covered by 3 core unit tests only) |
 | `mcdev-mcp init -v 26.2` (CLI) | Works with workarounds | 6513 classes / 537 packages, 402673 call refs |
-| mcdev-mcp / mcmodding-mcp as MCP servers in Claude Code | PENDING HUMAN | `claude mcp list`: "Pending approval"; Claude Code must be restarted in the repo and the servers approved |
-| DebugBridge port + `mc_*` tools | PENDING HUMAN | mod loads, but no port 9876-9886 opens until a human accepts its first-run consent screen |
-| Short video capture (`mc_record_video`) | Not exercised | deferred (S3 or the human check below) |
+| mcdev-mcp as MCP server in Claude Code | Works | approved in a session started inside the repo; `mc_version`, `mc_search` (Wolf) OK |
+| mcmodding-mcp as MCP server | Does not work | `/mcp`: Failed to reconnect (CONNECTION_CLOSED). Bounded run: npm `ENOTEMPTY` rename error in its npx cache (`@xenova/transformers`), docs DB dir not created. Cause not confirmed; not required for S0 |
+| DebugBridge port + `mc_*` tools | Works | after the human accepted the consent screen, port 9876 on 127.0.0.1; `mc_connect`, `mc_snapshot`, `mc_screenshot` (427x240 JPEG, `check-screenshot.sh` OK range=0..255) verified. `mc_execute` and session-control tools not tried (`session_control_enabled=false`) |
+| Prism instance "SmartPets Dev" | Works | `latest.log`: Minecraft 26.2, Fabric Loader 0.19.5, java 25, fabric-api 0.161.0+26.2, `SmartPets initialized (core: smartpets-core)`, no ERROR/Exception |
+| Short video capture (`mc_record_video`) | Not exercised | deferred (S3) |
 | Blockbench MCP | Not in S0 | moved to S3 |
 
 ## Headless GL findings
@@ -62,9 +64,9 @@ At first run DebugBridge shows a developer-mode consent screen ("I Understand - 
 - Build/test: `./gradlew build`, `./gradlew :core:test`.
 - In-game oracle: `bash scripts/qa/run-client-gametest.sh` (exit 0 = world rendered, screenshot not blank, dev ping seen).
 - Single image: `bash scripts/qa/check-screenshot.sh <png>`.
-- DebugBridge jar: `bash scripts/dev/fetch-debugbridge.sh`; dev client: `env -u WAYLAND_DISPLAY xvfb-run -a ./gradlew :mod:runClient` (boot to title screen verified; bridge pending).
-- Decompiled source / docs: MCP tools of `mcdev-mcp` and `mcmodding` once approved (pending).
-- Live state: `mc_connect`, `mc_snapshot`, `mc_screenshot` from mcdev-mcp against DebugBridge (pending).
+- DebugBridge jar: `bash scripts/dev/fetch-debugbridge.sh`; dev client: `env -u WAYLAND_DISPLAY xvfb-run -a ./gradlew :mod:runClient` (boot to title screen and bridge verified; the human clicks the consent screen once).
+- Decompiled source / docs: MCP tools of `mcdev-mcp` and `mcmodding` (`mcdev-mcp` verified; `mcmodding` not working).
+- Live state: `mc_connect`, `mc_snapshot`, `mc_screenshot` from mcdev-mcp against DebugBridge (verified).
 - Stop a game by PID only, never by name.
 
 ## Limits and deferred minors
