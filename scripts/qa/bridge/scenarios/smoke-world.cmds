@@ -1,0 +1,29 @@
+# scenario: smoke-world
+# purpose: toolkit smoke test - test world, day, clear, creative, walled arena, tamed wolf + zombie
+# needs: test-world
+# covers: none (toolkit self-test; no product behavior yet)
+# assertions: smoke-world.groovy
+# All lines are vanilla commands run as the player (~ and @s = the player). Setup only.
+# Selectors use distance=..24 (the whole arena): at ~1 fps mobs wander between two commands.
+gamemode creative
+time set day
+weather clear
+gamerule advance_time false
+gamerule spawn_mobs false
+difficulty easy
+tp @s 0 4 0 0 0
+kill @e[type=!minecraft:player,distance=..24]
+# arena: 17x17 smooth stone floor, air above, 2-high glass walls
+fill ~-8 ~-1 ~-8 ~8 ~-1 ~8 minecraft:smooth_stone
+fill ~-8 ~ ~-8 ~8 ~5 ~8 minecraft:air
+fill ~-9 ~ ~-9 ~9 ~1 ~-9 minecraft:glass
+fill ~-9 ~ ~9 ~9 ~1 ~9 minecraft:glass
+fill ~-9 ~ ~-9 ~-9 ~1 ~9 minecraft:glass
+fill ~9 ~ ~-9 ~9 ~1 ~9 minecraft:glass
+# pet stand-in: vanilla wolf tamed to the player (Owner copied from the player's UUID)
+summon minecraft:wolf ~3 ~ ~ {PersistenceRequired:1b}
+data modify entity @e[type=minecraft:wolf,distance=..24,limit=1,sort=nearest] Owner set from entity @s UUID
+# monster: zombie with a helmet so it does not burn in daylight
+summon minecraft:zombie ~-4 ~ ~3 {PersistenceRequired:1b}
+item replace entity @e[type=minecraft:zombie,distance=..24,limit=1,sort=nearest] armor.head with minecraft:leather_helmet
+# wait 10 ticks
