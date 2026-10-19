@@ -12,9 +12,8 @@ Thin entry point. The durable tools are repo scripts, so any agent or model can 
 - Dev instance only: `python3 scripts/qa/bridge/bridge.py status` must report `gameDir` ending in `mod/run`
   (bridge.py refuses `exec` otherwise, exit 5). Never use the Prism instance or a personal profile.
 - Ownership: drive a client only if the maintainer said in this session that the visible client is free to use,
-  or you started it yourself. `bash scripts/qa/dev-client.sh start --headless` / `stop` is UNVERIFIED with a real
-  game (mechanics tested with stand-ins only), so use it only while the human is watching until it has been run
-  once. Otherwise use read-only calls only (`bridge.py status|snapshot|screenshot|raw chatHistory`).
+  or you started it yourself. `bash scripts/qa/dev-client.sh start [--headless]` / `wait` / `stop` was run with a real game on 2026-10-19
+  (visible and headless: start, wait, smoke-world 1/1, stop; no process, port or pidfile left). Otherwise use read-only calls only (`bridge.py status|snapshot|screenshot|raw chatHistory`).
 - Never quit, leave or join on a client you did not start. `dev-client.sh stop` refuses anything it did not start.
 - Lint is a safety net, not a sandbox: do not work around it. Flags (`SP_FAST`, `SP_ALLOW_ANY_WORLD`) apply to one
   `bridge.py exec` call only and are reset afterwards.

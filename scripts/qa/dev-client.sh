@@ -10,7 +10,8 @@
 #             quit through the bridge (only if no foreign client is up and the bridge gameDir is this repo's
 #             mod/run), waits, then signals OUR game JVM pids and the leader's process group (by number).
 #             Exits 2 if it is still running afterwards. Never touches a client it did not start; never by name.
-#   Status: refusals/status/wait verified; a REAL game start/stop is UNVERIFIED (mechanics tested with a stand-in).
+#   Status: verified with a real game on 2026-10-19 (visible and headless: start, wait, smoke-world, stop).
+#   Still unproven: the exit-2 path (a game that survives KILL) and PID-reuse races (tested only with stand-ins).
 #   Not detected: nothing beyond /proc command lines (a client in a container or another user's session).
 # Files: mod/run/qa-runs/dev-client.pid ("<pgid> <starttime>"), mod/run/qa-runs/dev-client-<stamp>.log
 # Exit: 0 ok; 1 refused (already running / not ours); 2 failed to start/stop; 4 timeout; 64 usage.
