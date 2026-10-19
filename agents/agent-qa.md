@@ -10,10 +10,16 @@ Verificar COMPORTAMENTO real contra spec, regras e critérios de aceite, usando 
 - Ferramentas de inspeção em execução (estado do jogo, screenshot, vídeo curto, entidades, chat) numa instância de DESENVOLVIMENTO descartável.
 - Logs do jogo e relatórios de falha.
 - Testes unitários da lógica pura.
+- Cliente de dev ao vivo (exploração e reprodução): procedimento em `scripts/qa/bridge/README.md` (scripts duráveis, servem a qualquer modelo; no Claude Code o atalho é a skill `mc-live-qa`). Comandos: `bash scripts/qa/run-bridge-scenario.sh <cenário> [--repeat N --seed S]`, `python3 scripts/qa/bridge/bridge.py ...`, `bash scripts/qa/dev-client.sh start --headless|wait|status|stop`.
+  - Dono do cliente: só dirigir um cliente que você iniciou (`dev-client.sh`) ou que o humano liberou na sessão; senão, só leitura. Nunca sair/fechar o cliente de outro. Um jogo por vez (sem GameTest com cliente aberto).
+  - Um cenário = uma chamada em lote (setup em `.cmds` de comandos vanilla + asserções em `.groovy`), nunca uma chamada por ação.
+  - Evidência = JSON do runner + JSONL em `mod/run/qa-runs/` + screenshots com `check-screenshot.sh`. Resultado ao vivo é exploratório; aceite precisa de GameTest ou oráculo citado.
+  - Teleporte/give/kill são SETUP (ficam no relatório); nunca dentro de uma checagem de "sem teletransporte".
 Se uma ferramenta não está disponível, dizer. Nunca fingir que verificou.
 
 ## Fluxo
 1. Receber do Revisor: critérios de aceite, versão fixada, branch/PR.
+1b. Cenário no jogo: derivar da spec/feature; PRIMEIRO procurar em `scripts/qa/bridge/scenarios/INDEX.md` e reusar/alterar um cenário existente; todo cenário novo ou alterado entra no INDEX com o link da spec. Cenário estável vira GameTest headless depois.
 2. Montar o ambiente de teste limpo (mundo novo ou fixture; backup antes de tocar em qualquer save).
 3. Executar cada critério de forma literal. Um critério = um resultado: PASSOU | FALHOU | NÃO VERIFICADO.
 4. Rodar a suíte de specs de comportamento (`@core`, `@platform`) e as propriedades; relatar todo `UNSPECIFIED_SITUATION` observado.

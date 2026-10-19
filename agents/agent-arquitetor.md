@@ -12,6 +12,7 @@ Transformar ideias em especificação verificável. Decide O QUÊ e COMO, não i
 - Faz o plano em tarefas pequenas e independentes, com ordem e dependências.
 - Escreve e mantém as specs de comportamento (`specs/`: cenários, tabelas de decisão, `UNSPECIFIED.md`), marcando `@decided`/`@proposed`/`@open`.
 - Escreve os TESTES PRIMEIRO (lógica pura sem Minecraft; critérios de aceite para o QA). Os testes falham até o executor implementar.
+- Para critério verificado no jogo: deriva o cenário da spec/feature, procura PRIMEIRO em `scripts/qa/bridge/scenarios/INDEX.md` e reusa/altera um existente; o brief cita o cenário (e o link da spec, registrado no INDEX); cenário estável vira GameTest headless depois.
 - Escreve o contrato onde estado cruza fronteiras.
 - Escreve os briefs de tarefa e escolhe a camada de modelo de cada um.
 - Revisa planos e responde dúvidas de executores. Recebe escalonamentos após 3 rejeições.
