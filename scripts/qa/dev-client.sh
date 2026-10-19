@@ -3,7 +3,7 @@
 # usage: bash scripts/qa/dev-client.sh start [--headless] | wait [timeout_s] | status | stop
 #   start     launches `./gradlew --no-daemon :mod:runClient` detached in its own session (setsid nohup);
 #             --headless wraps it in `env -u WAYLAND_DISPLAY xvfb-run -a` (default: visible window).
-#             Refuses if a dev game JVM is already running or a bridge port (9876-9886) answers.
+#             Refuses if ANY Minecraft client JVM (dev, Prism, vanilla) is running or a bridge port answers.
 #   wait      blocks until the bridge answers (default 300 s), exit 4 on timeout.
 #   status    prints pidfile/ownership/bridge state (JSON-ish lines), never changes anything.
 #   stop      ONLY for a client this script started (pidfile + matching process start times): asks the game to
@@ -111,14 +111,26 @@ cmd_status() {
 }
 
 cmd_stop() {
+  mkdir -p "$RUNS"
+  exec 9> "$RUNS/dev-client.lock"
+  flock -n 9 || { echo "REFUSED: another dev-client.sh start/stop is in progress" >&2; exit 1; }
   if ! owned; then
-    [ -f "$PIDFILE" ] && { echo "stale pidfile removed (process gone or reused)"; rm -f "$PIDFILE"; }
+    if [ -f "$PIDFILE" ]; then
+      # leader gone and no game recorded: a game we started may still run (Gradle daemons detach), but it cannot be
+      # attributed safely. Keep the pidfile and let a human decide.
+      if [ -z "$(sed -n 2p "$PIDFILE")" ] && [ -n "$(game_pids)" ]; then
+        echo "FAILED: leader $(leader | cut -d' ' -f1) is gone, no game JVM was recorded (run 'wait' after start), and a dev game JVM is running (pid $(game_pids | xargs)): not touching it, pidfile kept" >&2
+        exit 2
+      fi
+      echo "stale pidfile removed (process gone or reused)"; rm -f "$PIDFILE"
+    fi
     echo "REFUSED: no client started by this script is running; not touching anything else" >&2; exit 1
   fi
-  local pg ours foreign="" g grace=5
-  pg=$(leader | cut -d' ' -f1)
-  ours=$(our_games | xargs)
-  for g in $(scan any); do case " $ours " in *" $g "*) ;; *) foreign="$foreign $g" ;; esac; done
+  local pg pgst ours="" foreign="" g grace=5
+  read -r pg pgst < <(leader)
+  for g in $(our_games); do ours="$ours $g:$(proc_start "$g")"; done   # pid:starttime, re-checked before each signal
+  ours="${ours# }"
+  for g in $(scan any); do case " $ours " in *" $g:"*) ;; *) foreign="$foreign $g" ;; esac; done
   # graceful `quit` only when: our game JVM exists, NO foreign client is up (the port does not say who answers),
   # and the answering bridge reports this repo's gameDir
   if [ -n "$ours" ] && [ -z "$foreign" ] && [ "$(bridge_gamedir)" = "$ROOT/mod/run" ]; then
@@ -131,14 +143,14 @@ br = b.Bridge(); print("quit:", br.request("quit", {}, timeout_s=10).get("succes
 PY
   elif [ -n "$foreign" ]; then echo "foreign client(s) up (pid$foreign): no bridge quit; signals go to our pids only"
   fi
-  alive() { local p; for p in $ours; do [ -d "/proc/$p" ] && return 0; done; owned_leader && [ -n "$(ps -o pid= -g "$pg" 2>/dev/null)" ]; }
+  alive() { local e; for e in $ours; do alive_as "${e%%:*}" "${e#*:}" && return 0; done; alive_as "$pg" "$pgst" && [ -n "$(ps -o pid= -g "$pg" 2>/dev/null)" ]; }
   for _ in $(seq 1 "$grace"); do alive || break; sleep 1; done
-  local sig
+  local sig e
   for sig in TERM KILL; do
     alive || break
     echo "still up: SIG$sig to game pid(s) [$ours] and process group $pg"
-    for g in $ours; do kill "-$sig" "$g" 2>/dev/null || true; done
-    owned_leader && kill "-$sig" -- "-$pg" 2>/dev/null || true
+    for e in $ours; do alive_as "${e%%:*}" "${e#*:}" && kill "-$sig" "${e%%:*}" 2>/dev/null || true; done
+    alive_as "$pg" "$pgst" && kill "-$sig" -- "-$pg" 2>/dev/null || true
     for _ in $(seq 1 15); do alive || break; sleep 1; done
   done
   if alive; then echo "FAILED: still running after TERM/KILL (game [$ours], group $pg); pidfile kept" >&2; exit 2; fi

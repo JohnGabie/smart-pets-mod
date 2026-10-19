@@ -32,6 +32,14 @@ FORBIDDEN_GROOVY = [
 FORBIDDEN_CMDS = {"stop", "kick", "ban", "ban-ip", "pardon", "pardon-ip", "op", "deop", "whitelist", "publish",
                   "transfer", "save-off", "jfr", "perf", "debug", "reload"}
 KNOWN_NEEDS = {"test-world", "in-world"}
+# checked on the RAW text (string/comment stripping must not hide them): direct game access that bypasses the
+# library's guard/logging, and binding tricks. Lint is a safety net for honest agents, not a sandbox.
+RAW_TOKENS = [
+    (r"binding\s*\.\s*(setVariable|setProperty|variables)|binding\s*\[", "binding manipulation"),
+    (r"SP_LIB_ARGS|spResetFlags\s*=|spRestoreDisplay\s*=", "tampers with library flags"),
+    (r"connection\s*\.\s*sendCommand|sendUnsignedCommand|sendChat\s*\(", "direct command send: use spCommand (guarded, logged)"),
+    (r"gameMode\s*\.\s*\w+\s*\(", "direct gameMode call: use spBreak/spPlace/spClick (guarded)"),
+]
 SLEEPY = re.compile(r"Thread\.sleep|\bsleep\s*\(|spWait\w*\s*\(|spWalk\s*\(|spHold\s*\(|spBreak\s*\(|spOpenWorld|spCloseWorld|spCreateTestWorld|spEnsure\w*|spCommand|spTime|spGamemode|spSummon\w*|spRunCmds")
 
 
@@ -83,11 +91,17 @@ def lint_groovy(path, src):
     for rx, why in FORBIDDEN_GROOVY:
         for s in re.finditer(rx, code):
             errs.append((line(s.start()), "ERROR", "forbidden (%s): %s" % (why, s.group(0))))
+    errs += raw_token_errs(src, line)
     for s in re.finditer(r"spCommand\s*\(\s*['\"]/?(tp|teleport)\b", src):
         errs.append((line(s.start()), "ERROR", "teleport via spCommand: use spTeleportSetup (SETUP only)"))
     if not re.search(r"return\s+spReport\s*\(\s*\)\s*$", code.strip()):
         errs.append((line(len(src)), "ERROR", "must end with `return spReport()`"))
     return errs
+
+
+def raw_token_errs(src, line):
+    return [(line(m.start()), "ERROR", "forbidden (%s): %s" % (why, m.group(0)))
+            for rx, why in RAW_TOKENS for m in re.finditer(rx, src)]
 
 
 def lint_snippet(src):
@@ -101,7 +115,7 @@ def lint_snippet(src):
     for rx, why in FORBIDDEN_GROOVY:
         for s_ in re.finditer(rx, code):
             errs.append((line(s_.start()), "ERROR", "forbidden (%s): %s" % (why, s_.group(0))))
-    return errs
+    return errs + raw_token_errs(src, line)
 
 
 def coord(tok):
@@ -124,8 +138,10 @@ def check_command(words, i, errs):
         errs.append((i, "INFO", "teleport is SETUP only (logged); never inside a 'no teleport' check"))
     if word == "kill":
         sel = words[1] if len(words) > 1 else "@s"
-        if sel in ("@a", "@s", "@p", "@r") or (sel.startswith("@e") and "type=" not in sel) or sel.startswith("@a["):
-            errs.append((i, "ERROR", "kill `%s` can kill the player: use @e[type=...] (e.g. type=!minecraft:player)" % sel))
+        negated_only = "type=!" in sel and not re.search(r"type=!(minecraft:)?player\b", sel) and not re.search(r"type=[^!]", sel)
+        if sel in ("@a", "@s", "@p", "@r") or (sel.startswith("@e") and "type=" not in sel) or sel.startswith("@a[") \
+                or (sel.startswith("@e") and negated_only):
+            errs.append((i, "ERROR", "kill `%s` can kill the player: use a positive type= or type=!minecraft:player" % sel))
     if word == "fill" and len(words) >= 7:
         cs = [coord(t) for t in words[1:7]]
         if all(cs) and all(cs[k][0] == cs[k + 3][0] for k in range(3)):
