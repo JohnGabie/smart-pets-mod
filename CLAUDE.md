@@ -5,11 +5,18 @@ Mod de Minecraft Java que dá a cães (v1) e gatos (v2) juízo, personalidade, g
 Este arquivo é a cola do projeto. Vale para qualquer agente e qualquer modelo. Os papéis estão em `agents/`. Nomes de modelos só existem em `agents/modelos.md`.
 
 ## 1. Estado e portão (leia primeiro)
-- Fase atual: especificação consolidada em rascunho (`docs/spec/SPEC.md`). NÃO existe código de produto.
+- Fase atual: especificação consolidada em rascunho (`docs/spec/SPEC.md`); V0-S0 (toolchain) feito em parte: PASS-WITH-FALLBACK: Prism, DebugBridge e `mcdev-mcp` verificados com ajuda humana em 2026-10-18; `mcmodding-mcp` não funciona; `mc_record_video`/`mc_execute` não testados; o laço de revisão da PR da Task 7 não rodou; ver `docs/spec/V0-SPIKES.md`. NÃO existe código de produto (só código de spike).
 - Portão: nenhum código de produto antes de (a) spec aprovada pelo humano e (b) plano aprovado pelo humano. Antes disso só documentação.
 - Exceção controlada: os spikes da V0 (`docs/spec/V0-SPIKES.md`) provam ferramentas e riscos; o código deles é descartável salvo se o ADR disser que "gradua". Cada spike termina em um ADR em `docs/adr/`.
-- Pendências que bloqueiam o scaffold: versão-alvo do Minecraft (provável 26.x, sem ofuscação), loader (provável Fabric), JDK exigido pela versão, launcher de desenvolvimento. Não assumir: perguntar.
-- Comandos de build e teste: `./gradlew build`, `./gradlew :core:test`, `bash scripts/qa/leak-check.sh`; teste no jogo headless (cliente GameTest + oráculo de screenshot): `bash scripts/qa/run-client-gametest.sh` (também exige `SMARTPETS_DEBUG_PONG` no log, vindo do comando dev `/smartpets debug ping`, ativo só com `-Dsmartpets.dev=true`, já definido na run `clientGameTest`; roda `env -u WAYLAND_DISPLAY xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :mod:runClientGameTest` e depois `scripts/qa/check-screenshot.sh`; sem variável extra, Mesa llvmpipe; ~2 min; nunca duas instâncias do jogo ao mesmo tempo).
+- Stack fixada (ADR-0001, aguardando aprovação): Minecraft 26.2 (não 26.3: sem DebugBridge), Fabric Loader 0.19.5, Fabric API 0.161.0+26.2, Loom 1.18-SNAPSHOT, Gradle 9.7.1, JDK 25 (Temurin, no home do usuário via `bash scripts/dev/install-jdk25.sh`). Observação/QA: ADR-0002.
+- Comandos (só os que foram rodados de verdade; não inventar outros):
+  - Build e testes: `./gradlew build`, `./gradlew :core:test`.
+  - Vazamento (antes de todo commit): `bash scripts/qa/leak-check.sh`. Site/README em dia: `bash scripts/qa/docs-freshness.sh`.
+  - Teste no jogo headless: `bash scripts/qa/run-client-gametest.sh` (roda `env -u WAYLAND_DISPLAY xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew :mod:runClientGameTest`, depois `bash scripts/qa/check-screenshot.sh` na primeira PNG e exige `SMARTPETS_DEBUG_PONG` no log, vindo do comando dev `/smartpets debug ping`, ativo só com `-Dsmartpets.dev=true`, já definido na run `clientGameTest`; sem variável extra, Mesa llvmpipe; screenshot 854x480; ~2 min frio, ~20 s quente).
+  - Instância de desenvolvimento: `bash scripts/dev/fetch-debugbridge.sh` (DebugBridge só em `mod/run/mods/`, git-ignored) e `env -u WAYLAND_DISPLAY xvfb-run -a ./gradlew :mod:runClient`. Instância Prism "SmartPets Dev": `PRISM_MODS_DIR=<pasta mods da instância> bash scripts/dev/install-to-prism.sh` (sem DebugBridge lá).
+  - Índice de fonte decompilada: `PATH=<jdk25>/bin:$PATH JAVA_HOME=<jdk25> JAVA_TOOL_OPTIONS=-Xmx3g npx -y mcdev-mcp@2.2.1 init -v 26.2` (cache ~1 GB fora do repo).
+- Ferramentas `mc_*` (verificado): os servidores de `.mcp.json` só carregam em sessões do Claude Code iniciadas dentro da pasta do repositório e pedem aprovação. `mcdev-mcp` funciona com o DebugBridge (porta 9876 em 127.0.0.1); `mcmodding` não funciona (ver `MODLOG.md`).
+- Regras da instância de dev: conta offline/dev, nunca o perfil pessoal; nunca duas instâncias do jogo ao mesmo tempo; parar o jogo só por PID; a tela de consentimento do DebugBridge é clicada pelo humano, nunca contornada por agente.
 
 ## 2. Fonte da verdade (nesta ordem)
 1. Specs aprovadas (`docs/spec/SPEC.md`; lacunas e decisões pendentes em `docs/spec/GAP-REVIEW.md`).
