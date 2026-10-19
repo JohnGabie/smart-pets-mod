@@ -47,14 +47,14 @@ The same data drives the project website (`site/data/status.json`).
 
 | Phase | Scope | State |
 |---|---|---|
-| V0, Foundations | Prove the toolchain and the hardest unknowns (voice, procedural coats, custom entity/model/animation, persistence and travel) before building features. Design spec and behavior specs are done; the toolchain spike (S0) is verified with fallbacks (build, unit tests, headless in-game test with screenshot, Prism instance, debug bridge and `mcdev-mcp` tools; `mcmodding-mcp` does not work and video capture is untried); the time source spike (S11) passed in the headless in-game test with bed sleep only simulated (ADR-0003, awaiting approval); the other spikes are planned. | In progress |
+| V0, Foundations | Prove the toolchain and the hardest unknowns (voice, procedural coats, custom entity/model/animation, persistence and travel) before building features. Design spec and behavior specs are done; the toolchain spike (S0) is verified with fallbacks (build, unit tests, headless in-game test with screenshot, Prism instance, debug bridge and `mcdev-mcp` tools; `mcmodding-mcp` does not work and video capture is untried); the time source spike (S11) is in progress: the world-day source is checked in the headless in-game test, the age rule is unit-tested only (no pets yet), bed sleep is simulated (ADR-0003, awaiting approval); the other spikes are planned. | In progress |
 | V1, The Dog | Singleplayer dog: judgment, needs, genetics, training by cues, wild conquest, orphan puppies, sleep and home. | Planned |
 | V2, The Cat | Independent cats with affection, naps and warm spots. | Planned |
 | V3, Multiplayer | Bond per person, co-guardians, anti-theft rules. | Planned |
 
 ## Project status and getting started
 
-There is nothing to play yet. The toolchain spike (V0-S0) scaffolded a trivial Fabric mod for Minecraft 26.2 (Java 25) that builds, passes its unit tests and runs a headless in-game test; it contains no pet features. The verified build and test commands are in [`CLAUDE.md`](CLAUDE.md) section 1, and the decisions are in [`docs/adr/`](docs/adr/). No product code will be written until the specification and the plan are approved by the maintainer.
+There is nothing to play yet. The toolchain spike (V0-S0) scaffolded a trivial Fabric mod for Minecraft 26.2 (Java 25) that builds, passes its unit tests and runs a headless in-game test. The time source spike (V0-S11) added pure world-day and age rules in `core` (unit-tested) and a dev-only command that reads the world day. There are no pets and no pet features. The verified build and test commands are in [`CLAUDE.md`](CLAUDE.md) section 1, and the decisions are in [`docs/adr/`](docs/adr/). No product code will be written until the specification and the plan are approved by the maintainer.
 
 If you are curious, the best entry points are:
 - [`docs/spec/SPEC.md`](docs/spec/SPEC.md): the consolidated specification.

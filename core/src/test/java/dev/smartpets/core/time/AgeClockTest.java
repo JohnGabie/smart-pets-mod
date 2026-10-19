@@ -67,6 +67,13 @@ class AgeClockTest {
 	}
 
 	@Test
+	void forwardJumpThresholdIsInclusive() {
+		assertEquals(TimeAnomaly.FORWARD_JUMP, AgeClock.step(0, 30, 30).anomaly());
+		assertEquals(TimeAnomaly.NONE, AgeClock.step(0, 29, 30).anomaly());
+		assertEquals(TimeAnomaly.FORWARD_JUMP, AgeClock.step(0, 1, 1).anomaly());
+	}
+
+	@Test
 	void sameDayIsNoStep() {
 		assertEquals(new DayStep(7, 7, 0, TimeAnomaly.NONE), AgeClock.step(7, 7, 30));
 	}

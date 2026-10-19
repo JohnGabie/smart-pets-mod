@@ -20,7 +20,7 @@
         { "name": "Consolidated design spec and gap review", "state": "done" },
         { "name": "Executable behavior specs (67 scenarios, decision table)", "state": "done" },
         { "name": "Toolchain, headless tests and in-game observation (S0): build, unit tests and headless in-game test verified; launcher instance, debug bridge and mcdev-mcp tools verified with the maintainer; mcmodding-mcp not working, video capture untried; ADRs 0001-0002 proposed", "state": "progress" },
-        { "name": "World time source (S11): the age rule follows the world day counter and never goes back when time is set back (no pets yet); checked in the headless in-game test, bed sleep only simulated; ADR-0003 proposed", "state": "done" },
+        { "name": "World time source (S11): world-day source checked in the headless in-game test; age rule (never goes back when time is set back) unit-tested only, no pets yet; bed sleep simulated; ADR-0003 proposed, awaiting approval", "state": "progress" },
         { "name": "Voice cue recognition spike", "state": "planned" },
         { "name": "Procedural coat textures spike", "state": "planned" },
         { "name": "Custom entity, model and animation spike", "state": "planned" },
