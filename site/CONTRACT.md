@@ -20,4 +20,4 @@ Honesty rules: nothing here is real gameplay yet. Label demos "concept demo, not
 - i18n: each owner uses only its own module keys (prefix `landing.`, `demos.`, `dev.` not required to be translated; dev tab is English only).
 - Accessibility: semantic landmarks, alt text, visible focus, keyboard-operable demos, `prefers-reduced-motion` respected, contrast AA on text.
 - Fonts: A downloads `PressStart2P-Regular.ttf` (OFL) to `assets/fonts/` and records license in ASSETS.md.
-- Hosting: `.github/workflows/pages.yml` is `workflow_dispatch` only (GitHub Pages needs a public repo on the free plan).
+- Hosting: `.github/workflows/pages.yml` deploys `site/` on every push to `main` that touches `site/` (and on manual dispatch). Pages source is "GitHub Actions"; GitHub Pages needs a public repo on the free plan. Live at https://johngabie.github.io/smart-pets-mod/.
