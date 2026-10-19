@@ -32,3 +32,6 @@ Thumbs.db
 
 # Local session journals (context diaries)
 .journal/
+
+# Evidence bank (local, agent-written data; viewer is read-only)
+.evidence/
